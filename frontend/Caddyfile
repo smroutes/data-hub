@@ -1,4 +1,6 @@
 {$SITE_ADDRESS} {
+	redir / /search permanent
+
 	handle /api/* {
 		reverse_proxy backend:8000
 	}
