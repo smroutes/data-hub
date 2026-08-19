@@ -1,0 +1,6 @@
+sheet-data/
+*.csv
+cache/
+__pycache__/
+*.pyc
+.git/

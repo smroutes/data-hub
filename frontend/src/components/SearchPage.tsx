@@ -1,0 +1,159 @@
+import { useState } from "react"
+import { Search, Loader2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { searchRecords } from "@/lib/api"
+import type { Dataset } from "@/datasets"
+import type { SearchResult } from "@/types"
+
+function findNameColumn(columns: string[]) {
+  return columns.find((c) => c.toLowerCase().includes("name")) ?? columns[0]
+}
+
+export function SearchPage({ dataset }: { dataset: Dataset }) {
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [status, setStatus] = useState<string>("")
+  const [loading, setLoading] = useState(false)
+  const [selectedRow, setSelectedRow] = useState<SearchResult | null>(null)
+
+  async function runSearch() {
+    const term = query.trim()
+    if (!term) {
+      setStatus("Enter an application number, phone number, or name.")
+      setResults([])
+      return
+    }
+    setLoading(true)
+    setStatus("")
+    try {
+      const rows = await searchRecords(term)
+      setResults(rows)
+      setStatus(
+        rows.length
+          ? `${rows.length} result${rows.length === 1 ? "" : "s"} found.`
+          : "No results found."
+      )
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Search failed.")
+      setResults([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const columns = results.length ? Object.keys(results[0]) : []
+  const nameColumn = findNameColumn(columns)
+  const placeholder = `Search by ${dataset.searchableBy.join(", ")}`
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:py-10">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">{dataset.title}</CardTitle>
+          <CardDescription>{dataset.description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && runSearch()}
+              placeholder={placeholder}
+              autoFocus
+            />
+            <Button onClick={runSearch} disabled={loading} className="sm:w-auto">
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Search className="size-4" />
+              )}
+              Search
+            </Button>
+          </div>
+
+          {status && (
+            <p className="text-muted-foreground mt-3 text-sm">{status}</p>
+          )}
+
+          {results.length > 0 && (
+            <div className="mt-4 max-h-[60vh] overflow-y-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {columns.map((col) => (
+                      <TableHead key={col}>{col}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {results.map((row, i) => (
+                    <TableRow key={i}>
+                      {columns.map((col) =>
+                        col === nameColumn ? (
+                          <TableCell key={col}>
+                            <button
+                              onClick={() => setSelectedRow(row)}
+                              className="text-primary font-medium underline-offset-2 hover:underline"
+                            >
+                              {row[col] ?? ""}
+                            </button>
+                          </TableCell>
+                        ) : (
+                          <TableCell key={col}>{row[col] ?? ""}</TableCell>
+                        )
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={selectedRow !== null}
+        onOpenChange={(open) => !open && setSelectedRow(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedRow?.[nameColumn] ?? "Record details"}</DialogTitle>
+            <DialogDescription>{dataset.title}</DialogDescription>
+          </DialogHeader>
+          <dl className="divide-y">
+            {selectedRow &&
+              Object.entries(selectedRow).map(([key, value]) => (
+                <div key={key} className="grid grid-cols-3 gap-2 py-2 text-sm">
+                  <dt className="text-muted-foreground col-span-1">{key}</dt>
+                  <dd className="col-span-2 break-words">{value ?? "—"}</dd>
+                </div>
+              ))}
+          </dl>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

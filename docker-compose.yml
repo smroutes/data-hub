@@ -1,0 +1,24 @@
+services:
+  backend:
+    build: .
+    environment:
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_OBJECT_KEY: ${R2_OBJECT_KEY:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+    volumes:
+      - ./sheet-data:/data:ro
+      - cache:/app/cache
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  cache:
