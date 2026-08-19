@@ -42,4 +42,18 @@ docker compose -f docker-compose.prod.yml up -d
 
 Caddy detects the real domain in `SITE_ADDRESS` and automatically provisions HTTPS via Let's Encrypt — no manual cert steps.
 
-To ship a new version later: bump the tag, push it, wait for the Actions build to finish, then re-run the `pull` + `up -d` on the droplet.
+### Auto-deploy on tag push
+
+Once the droplet is deployed the first time (steps above), pushing a new version tag auto-deploys it — the workflow builds the images, then SSHes into the droplet and runs `git pull` + `docker compose -f docker-compose.prod.yml pull && up -d`.
+
+This needs three repo secrets (GitHub → Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `DROPLET_HOST` | droplet's public IP or `wb275.in` |
+| `DROPLET_USER` | SSH user, e.g. `root` |
+| `DROPLET_SSH_KEY` | private key (PEM) matching a public key already in the droplet's `~/.ssh/authorized_keys` — use a dedicated deploy key, not your personal one |
+
+Until these are set, the `deploy` job in the workflow will fail (harmless — the image build/publish still succeeds); add them once the droplet exists and has done its first manual deploy.
+
+To ship a new version: `git tag v1.0.1 && git push origin v1.0.1` — that's it.
