@@ -22,6 +22,7 @@ git push origin v1.0.0
 This publishes `ghcr.io/smroutes/data-hub-backend` and `ghcr.io/smroutes/data-hub-frontend`, tagged with the version and `:latest`. GHCR packages are private by default, so the droplet needs a one-time login before it can pull them.
 
 **One-time setup on the droplet:**
+0. `apt-get install -y docker.io docker-compose-v2 git` (package is `docker-compose-v2` on stock Ubuntu 24.04, not `docker-compose-plugin`).
 1. Create a GitHub Personal Access Token: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → grant **read:packages** on this repo.
 2. On the droplet:
    ```bash
