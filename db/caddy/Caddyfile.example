@@ -1,0 +1,21 @@
+# Example reverse proxy config for putting the auth + REST API behind
+# HTTPS on a real domain. Not wired into docker-compose.yml by default --
+# copy this to Caddyfile, fill in your domain, and run Caddy separately
+# (either as another container joined to this compose network, or
+# natively on the host). See README "Reverse proxy" section.
+
+api.example.com {
+	handle /auth/* {
+		uri strip_prefix /auth
+		reverse_proxy 127.0.0.1:9999
+	}
+
+	handle /rest/* {
+		uri strip_prefix /rest
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	handle {
+		respond 404
+	}
+}

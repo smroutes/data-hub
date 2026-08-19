@@ -1,0 +1,87 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-citizens}
+      TZ: ${TZ:-Asia/Kolkata}
+      AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}
+      GOTRUE_DB_PASSWORD: ${GOTRUE_DB_PASSWORD}
+    # Conservative tuning for a 512MB droplet. See README "Memory" section
+    # before raising these on a bigger box.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - max_connections=40
+      - -c
+      - timezone=${TZ:-Asia/Kolkata}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-citizens}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Not published to the host at all -- only reachable by other
+    # containers on this compose network. Never expose 5432 publicly.
+
+  auth:
+    image: supabase/auth:v2.196.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${GOTRUE_SITE_URL:-http://localhost}
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${GOTRUE_DB_PASSWORD}@db:5432/${POSTGRES_DB:-citizens}
+
+      GOTRUE_SITE_URL: ${GOTRUE_SITE_URL:-http://localhost}
+      GOTRUE_DISABLE_SIGNUP: "true" # no public registration -- admin creates users
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "true" # no real mail server; see README
+
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: ${JWT_EXP:-3600}
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+
+      GOTRUE_LOG_LEVEL: warn
+    ports:
+      - "127.0.0.1:9999:9999" # host-local only; put a reverse proxy in front for real access
+
+  rest:
+    image: postgrest/postgrest:v16.1
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${AUTHENTICATOR_PASSWORD}@db:5432/${POSTGRES_DB:-citizens}
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_JWT_ROLE_CLAIM_KEY: $$.role # docker-compose escapes $ as $$; postgrest sees $.role
+      PGRST_DB_POOL: 3 # small pool -- 512MB has no room for a big connection pool
+      PGRST_SERVER_PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000" # host-local only; put a reverse proxy in front for real access
+
+volumes:
+  pgdata:
