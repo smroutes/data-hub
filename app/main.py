@@ -2,36 +2,65 @@ import glob
 import os
 
 import duckdb
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Request
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 CACHE_DIR = os.environ.get("CACHE_DIR", "/app/cache")
-PARQUET_PATH = os.path.join(CACHE_DIR, "report.parquet")
 
 R2_BUCKET = os.environ.get("R2_BUCKET")
-R2_OBJECT_KEY = os.environ.get("R2_OBJECT_KEY")
 R2_ENDPOINT = os.environ.get("R2_ENDPOINT")  # https://<account_id>.r2.cloudflarestorage.com
 R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
 R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
 
-SEARCH_COLUMNS = ["ApplicationNo.", "Mobile", "Applicant Name"]
+# Add an entry here for each searchable dataset. r2_env names the env var
+# holding that dataset's object key in R2_BUCKET; local_glob is the fallback
+# CSV lookup under DATA_DIR for local dev without R2 configured.
+#
+# Each field is a query param the frontend can send:
+#   match "any"      -> OR's the value across all listed columns (free-text box)
+#   match "exact"     -> column = value (e.g. a dropdown)
+#   match "contains"  -> column ILIKE %value% (a plain text field)
+# Fields present in the request are ANDed together; at least one is required.
+DATASETS = {
+    "annapurna": {
+        "fields": [
+            {
+                "param": "q",
+                "columns": ["ApplicationNo.", "Mobile", "Applicant Name"],
+                "match": "any",
+            },
+        ],
+        "local_glob": "*annapurna_report*.csv",
+        "r2_env": "R2_OBJECT_KEY_ANNAPURNA",
+    },
+    "booth-president": {
+        "fields": [
+            {"param": "gp", "columns": ["Location"], "match": "exact"},
+            {"param": "booth_no", "columns": ["Booth No"], "match": "contains"},
+        ],
+        "local_glob": "*Booth President*.csv",
+        "r2_env": "R2_OBJECT_KEY_BOOTH_PRESIDENT",
+    },
+}
 
-app = FastAPI(title="Annapurna Scheme Search")
+app = FastAPI(title="DataHub Search")
 
 
-def find_local_csv() -> str:
-    candidates = sorted(glob.glob(os.path.join(DATA_DIR, "*report*.csv"))) or sorted(
-        glob.glob(os.path.join(DATA_DIR, "*.csv"))
-    )
+def parquet_path(dataset_id: str) -> str:
+    return os.path.join(CACHE_DIR, f"{dataset_id}.parquet")
+
+
+def find_local_csv(pattern: str) -> str:
+    candidates = sorted(glob.glob(os.path.join(DATA_DIR, pattern)))
     if not candidates:
-        raise FileNotFoundError(f"No CSV file found in {DATA_DIR}")
+        raise FileNotFoundError(f"No CSV file matching {pattern} found in {DATA_DIR}")
     return candidates[0]
 
 
 def configure_r2(con: duckdb.DuckDBPyConnection) -> None:
     if not R2_ENDPOINT or not R2_ACCESS_KEY_ID or not R2_SECRET_ACCESS_KEY:
         raise RuntimeError(
-            "R2_BUCKET/R2_OBJECT_KEY set but R2_ENDPOINT, R2_ACCESS_KEY_ID, "
+            "R2_BUCKET set but R2_ENDPOINT, R2_ACCESS_KEY_ID, "
             "or R2_SECRET_ACCESS_KEY is missing"
         )
     use_ssl = not R2_ENDPOINT.startswith("http://")
@@ -46,51 +75,79 @@ def configure_r2(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"SET s3_secret_access_key='{R2_SECRET_ACCESS_KEY}'")
 
 
-def write_parquet(con: duckdb.DuckDBPyConnection, csv_source: str) -> None:
+def write_parquet(con: duckdb.DuckDBPyConnection, csv_source: str, dataset_id: str) -> None:
     source_escaped = csv_source.replace("'", "''")
-    parquet_escaped = PARQUET_PATH.replace("'", "''")
+    parquet_escaped = parquet_path(dataset_id).replace("'", "''")
     con.execute(
         f"COPY (SELECT * FROM read_csv_auto('{source_escaped}', ALL_VARCHAR=TRUE)) "
         f"TO '{parquet_escaped}' (FORMAT PARQUET)"
     )
 
 
-def ensure_parquet() -> str:
+def ensure_parquet(dataset_id: str) -> str:
     os.makedirs(CACHE_DIR, exist_ok=True)
+    config = DATASETS[dataset_id]
+    r2_object_key = os.environ.get(config["r2_env"])
 
-    if R2_BUCKET and R2_OBJECT_KEY:
+    if R2_BUCKET and r2_object_key:
         con = duckdb.connect()
         try:
             configure_r2(con)
-            write_parquet(con, f"s3://{R2_BUCKET}/{R2_OBJECT_KEY}")
+            write_parquet(con, f"s3://{R2_BUCKET}/{r2_object_key}", dataset_id)
         finally:
             con.close()
-        return PARQUET_PATH
+        return parquet_path(dataset_id)
 
-    csv_path = find_local_csv()
-    if not os.path.exists(PARQUET_PATH) or os.path.getmtime(csv_path) > os.path.getmtime(PARQUET_PATH):
+    csv_path = find_local_csv(config["local_glob"])
+    out_path = parquet_path(dataset_id)
+    if not os.path.exists(out_path) or os.path.getmtime(csv_path) > os.path.getmtime(out_path):
         con = duckdb.connect()
         try:
-            write_parquet(con, csv_path)
+            write_parquet(con, csv_path, dataset_id)
         finally:
             con.close()
-    return PARQUET_PATH
+    return out_path
 
 
 @app.on_event("startup")
 def startup() -> None:
-    ensure_parquet()
+    for dataset_id in DATASETS:
+        try:
+            ensure_parquet(dataset_id)
+        except FileNotFoundError as e:
+            print(f"Skipping dataset '{dataset_id}': {e}")
 
 
 @app.get("/api/search")
-def search(q: str = Query(..., min_length=1), limit: int = 50):
-    term = f"%{q.strip()}%"
-    where_clause = " OR ".join(f'"{col}" ILIKE ?' for col in SEARCH_COLUMNS)
+def search(request: Request, dataset: str = "annapurna", limit: int = 50):
+    if dataset not in DATASETS:
+        raise HTTPException(status_code=400, detail=f"Unknown dataset '{dataset}'")
+    path = parquet_path(dataset)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=503, detail=f"Dataset '{dataset}' not loaded")
+
+    clauses = []
+    params: list[str] = []
+    for field in DATASETS[dataset]["fields"]:
+        value = request.query_params.get(field["param"], "").strip()
+        if not value:
+            continue
+        is_exact = field["match"] == "exact"
+        column_clauses = []
+        for col in field["columns"]:
+            column_clauses.append(f'"{col}" = ?' if is_exact else f'"{col}" ILIKE ?')
+            params.append(value if is_exact else f"%{value}%")
+        clauses.append("(" + " OR ".join(column_clauses) + ")")
+
+    if not clauses:
+        raise HTTPException(status_code=400, detail="At least one search field is required")
+
+    where_clause = " AND ".join(clauses)
     con = duckdb.connect()
     try:
         rows = con.execute(
-            f'SELECT * FROM read_parquet(?) WHERE {where_clause} LIMIT ?',
-            [PARQUET_PATH, *([term] * len(SEARCH_COLUMNS)), limit],
+            f"SELECT * FROM read_parquet(?) WHERE {where_clause} LIMIT ?",
+            [path, *params, limit],
         ).fetchdf()
     finally:
         con.close()
@@ -99,6 +156,7 @@ def search(q: str = Query(..., min_length=1), limit: int = 50):
 
 @app.get("/api/health")
 def health():
-    if not os.path.exists(PARQUET_PATH):
-        raise HTTPException(status_code=503, detail="data not loaded")
+    missing = [d for d in DATASETS if not os.path.exists(parquet_path(d))]
+    if missing:
+        raise HTTPException(status_code=503, detail=f"datasets not loaded: {missing}")
     return {"status": "ok"}

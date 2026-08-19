@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Search, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -33,23 +34,25 @@ function findNameColumn(columns: string[]) {
 }
 
 export function SearchPage({ dataset }: { dataset: Dataset }) {
-  const [query, setQuery] = useState("")
+  const [values, setValues] = useState<Record<string, string>>(
+    Object.fromEntries(dataset.fields.map((f) => [f.param, ""]))
+  )
   const [results, setResults] = useState<SearchResult[]>([])
   const [status, setStatus] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [selectedRow, setSelectedRow] = useState<SearchResult | null>(null)
 
   async function runSearch() {
-    const term = query.trim()
-    if (!term) {
-      setStatus("Enter an application number, phone number, or name.")
+    const hasValue = Object.values(values).some((v) => v.trim())
+    if (!hasValue) {
+      setStatus("Enter at least one search field.")
       setResults([])
       return
     }
     setLoading(true)
     setStatus("")
     try {
-      const rows = await searchRecords(term)
+      const rows = await searchRecords(values, dataset.id)
       setResults(rows)
       setStatus(
         rows.length
@@ -66,7 +69,6 @@ export function SearchPage({ dataset }: { dataset: Dataset }) {
 
   const columns = results.length ? Object.keys(results[0]) : []
   const nameColumn = findNameColumn(columns)
-  const placeholder = `Search by ${dataset.searchableBy.join(", ")}`
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:py-10">
@@ -77,13 +79,36 @@ export function SearchPage({ dataset }: { dataset: Dataset }) {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && runSearch()}
-              placeholder={placeholder}
-              autoFocus
-            />
+            {dataset.fields.map((field) =>
+              field.type === "select" ? (
+                <Select
+                  key={field.param}
+                  value={values[field.param]}
+                  onChange={(e) =>
+                    setValues((v) => ({ ...v, [field.param]: e.target.value }))
+                  }
+                  className="sm:w-40"
+                >
+                  <option value="">{field.label}</option>
+                  {field.options?.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  key={field.param}
+                  value={values[field.param]}
+                  onChange={(e) =>
+                    setValues((v) => ({ ...v, [field.param]: e.target.value }))
+                  }
+                  onKeyDown={(e) => e.key === "Enter" && runSearch()}
+                  placeholder={field.placeholder ?? field.label}
+                  autoFocus={field === dataset.fields[0]}
+                />
+              )
+            )}
             <Button onClick={runSearch} disabled={loading} className="sm:w-auto">
               {loading ? (
                 <Loader2 className="size-4 animate-spin" />

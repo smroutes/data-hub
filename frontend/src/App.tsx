@@ -12,7 +12,7 @@ function App() {
     <div className="flex min-h-svh flex-col bg-background">
       <Header datasets={datasets} selected={selected} onSelect={setSelectedId} />
       <div className="flex-1">
-        <SearchPage dataset={selected} />
+        <SearchPage key={selected.id} dataset={selected} />
       </div>
       <Footer />
     </div>
