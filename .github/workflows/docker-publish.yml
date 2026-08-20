@@ -17,8 +17,11 @@ jobs:
         include:
           - image: backend
             context: .
+            build-args: ""
           - image: frontend
             context: ./frontend
+            build-args: |
+              VITE_CITIZENS_API_URL=https://api.wb275.in
 
     steps:
       - name: Checkout
@@ -48,6 +51,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
+          build-args: ${{ matrix.build-args }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
