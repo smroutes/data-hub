@@ -1,0 +1,37 @@
+{$SITE_ADDRESS} {
+	@preflight method OPTIONS
+	handle @preflight {
+		header Access-Control-Allow-Origin "{$CORS_ALLOWED_ORIGIN}"
+		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		header Access-Control-Allow-Headers "authorization, content-type, prefer, range"
+		header Access-Control-Max-Age "3600"
+		respond 204
+	}
+
+	handle /auth/* {
+		uri strip_prefix /auth
+		reverse_proxy auth:9999 {
+			# GoTrue sends its own permissive Access-Control-Allow-Origin;
+			# strip it so we don't end up with two values for that header
+			# (which browsers treat as an invalid CORS response).
+			header_down -Access-Control-Allow-Origin
+		}
+		header Access-Control-Allow-Origin "{$CORS_ALLOWED_ORIGIN}"
+	}
+
+	handle /rest/* {
+		uri strip_prefix /rest
+		reverse_proxy rest:3000 {
+			header_down -Access-Control-Allow-Origin
+		}
+		header Access-Control-Allow-Origin "{$CORS_ALLOWED_ORIGIN}"
+	}
+
+	handle {
+		respond 404
+	}
+
+	header {
+		-Server
+	}
+}

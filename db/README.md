@@ -6,12 +6,19 @@ signup. Deployed on its **own** droplet, separate from the search app in
 the rest of this repo.
 
 ```
-app (Caddy + React)  --/auth/*-->  GoTrue   \
-     |                --/rest/*--> PostgREST  }--> PostgreSQL
-     └── serves the login + citizen-records UI    /
+../frontend (separate app/droplet, wb275.in)
+     |  cross-origin fetch, CORS
+     v
+gateway (Caddy, TLS + CORS)  --/auth/*-->  GoTrue   \
+                             --/rest/*--> PostgREST  }--> PostgreSQL
+                                                          /
 
 nightly pg_dump → gzip → Cloudflare R2 (host cron, see scripts/backup.sh)
 ```
+
+The login UI itself lives in `../frontend` (the existing DataHub app) --
+not here. This directory is the backend + a thin public gateway into it;
+see `../frontend/src/lib/auth.ts` etc. for the client side.
 
 ## Before you start: two things this architecture cannot do
 
@@ -37,25 +44,18 @@ against current docs before building this:
 ```
 db/
 ├── docker-compose.yml
+├── Caddyfile             -- the gateway: TLS + CORS, /auth/* and /rest/*
 ├── .env.example
 ├── postgres/init/       -- runs once, only on an empty volume
 │   ├── 01-roles.sql
 │   ├── 02-set-passwords.sh
 │   └── 03-schema.sql
-├── scripts/
-│   ├── manage-users.sh  -- create/disable/enable/reset-password/list
-│   ├── create-admin.sh  -- bootstrap the first user
-│   ├── backup.sh        -- pg_dump -> gzip -> R2, with verification + retention
-│   ├── restore.sh        -- restore a dump from R2 (destructive, confirms twice)
-│   └── lib/sign-service-jwt.py
-└── app/                 -- React login + citizen-records UI, served by Caddy
-    ├── Dockerfile
-    ├── Caddyfile         -- serves the SPA, proxies /auth/* and /rest/*
-    └── src/
-        ├── lib/auth.ts         -- login/refresh/logout against GoTrue
-        ├── lib/AuthContext.tsx
-        ├── lib/ProtectedRoute.tsx
-        └── pages/{Login,Dashboard}.tsx
+└── scripts/
+    ├── manage-users.sh  -- create/disable/enable/reset-password/list
+    ├── create-admin.sh  -- bootstrap the first user
+    ├── backup.sh        -- pg_dump -> gzip -> R2, with verification + retention
+    ├── restore.sh        -- restore a dump from R2 (destructive, confirms twice)
+    └── lib/sign-service-jwt.py
 ```
 
 ## Local development
@@ -68,10 +68,17 @@ cp .env.example .env   # fill in POSTGRES_PASSWORD, AUTHENTICATOR_PASSWORD,
 docker compose up -d --build
 ./scripts/create-admin.sh dev-user
 ```
-Open **http://localhost:8080** -- login page first, then the (placeholder)
-authenticated landing page after signing in. `8080`/`8443` are used instead
-of `80`/`443` so this doesn't clash with the other app in this repo if
-you're running both locally at once.
+This exposes the API gateway on **http://localhost:8081** (`/auth/*`,
+`/rest/*`). Then, separately, run the frontend against it:
+```bash
+cd ../frontend
+npm install
+npm run dev
+```
+Open **http://localhost:5173/login** -- `CORS_ALLOWED_ORIGIN` in `db/.env`
+already defaults to `http://localhost:5173` to match. `8081`/`8444` are used
+instead of `80`/`443` so this doesn't clash with the other app in this repo
+if you're running both locally at once.
 
 ## Fresh droplet setup
 
@@ -144,21 +151,27 @@ curl -s http://127.0.0.1:9999/token?grant_type=password \
   -d '{"email":"frontdesk1@internal.local","password":"..."}'
 ```
 Returns an `access_token` (JWT) -- send it as `Authorization: Bearer <token>`
-to PostgREST (`http://127.0.0.1:3000/citizens`).
+to PostgREST (`http://127.0.0.1:3000/citizens` locally, or
+`https://your-api-domain.com/rest/citizens` through the gateway in
+production). The actual login UI is `../frontend`'s `/login` page, which
+does exactly this over `gateway` instead of hitting `auth`/`rest` directly.
 
 ## Reverse proxy / HTTPS in production
 
-The `app` service *is* the reverse proxy -- it's Caddy, serving the login UI
-and proxying `/auth/*` → GoTrue and `/rest/*` → PostgREST over the internal
-Docker network (same pattern as `../frontend/Caddyfile` in this repo). GoTrue
-and PostgREST additionally publish to `127.0.0.1` directly, for the admin
-scripts and manual `curl` debugging -- not for the office UI, which only
-ever talks to `app`.
+`gateway` is the public entrypoint -- Caddy, proxying `/auth/*` → GoTrue and
+`/rest/*` → PostgREST over the internal Docker network, with CORS headers
+so the frontend (a different origin, on a different droplet) can call it
+from the browser. GoTrue and PostgREST additionally publish to `127.0.0.1`
+directly, for the admin scripts and manual `curl` debugging -- the frontend
+never talks to those ports, only to `gateway`.
 
-For production: set `SITE_ADDRESS=your-domain.com` in `.env` and
-`APP_HTTP_PORT=80`/`APP_HTTPS_PORT=443`, point DNS at the droplet, and Caddy
-auto-provisions Let's Encrypt HTTPS on startup -- no manual cert steps
-(identical mechanism to `../docker-compose.prod.yml`'s `SITE_ADDRESS`).
+For production: set `SITE_ADDRESS=your-api-domain.com`,
+`CORS_ALLOWED_ORIGIN=https://your-frontend-domain.com`, and
+`GATEWAY_HTTP_PORT=80`/`GATEWAY_HTTPS_PORT=443` in `.env`, point DNS at this
+droplet, and Caddy auto-provisions Let's Encrypt HTTPS on startup -- no
+manual cert steps (identical mechanism to `../docker-compose.prod.yml`'s
+`SITE_ADDRESS`). Then set the frontend's API base URL env vars (see
+`../frontend/README.md`) to `https://your-api-domain.com`.
 
 ## Security checklist
 
@@ -183,7 +196,7 @@ overhead:
 | Postgres (tuned per this compose file) | ~150-200MB |
 | GoTrue | ~20-40MB |
 | PostgREST | ~15-25MB |
-| `app` (Caddy, static files) | ~10-20MB |
+| `gateway` (Caddy, TLS + CORS only) | ~10-20MB |
 | Ubuntu + Docker daemon | ~150-200MB |
 | **Total idle** | **~360-470MB** |
 
@@ -212,6 +225,7 @@ docker compose ps                 # container status + health
 docker compose logs db            # Postgres logs
 docker compose logs auth          # GoTrue logs
 docker compose logs rest          # PostgREST logs
+docker compose logs gateway       # Caddy gateway logs
 docker compose restart auth       # restart one service
 ```
 
@@ -239,6 +253,11 @@ migration error.
 var, so this should always be true unless you edited one directly), and
 that you're sending `Authorization: Bearer <token>` from a real login, not
 an expired one (`JWT_EXP` default is 3600s = 1 hour).
+
+**Frontend gets a CORS error in the browser console** -- `CORS_ALLOWED_ORIGIN`
+in `db/.env` must exactly match the frontend's origin (scheme + host + port,
+e.g. `http://localhost:5173`, no trailing slash). Restart `gateway` after
+changing it: `docker compose up -d gateway`.
 
 **"survives `docker compose down && up -d`?"** -- yes, `pgdata` is a named
 Docker volume, unaffected by `down`/`up`. Only `docker compose down -v` (or

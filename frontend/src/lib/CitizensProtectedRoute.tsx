@@ -1,10 +1,10 @@
 import { Navigate } from "react-router-dom"
 import type { ReactNode } from "react"
 import { Loader2 } from "lucide-react"
-import { useAuth } from "@/lib/AuthContext"
+import { useCitizensAuth } from "@/lib/CitizensAuthContext"
 
-export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { session, loading } = useAuth()
+export function CitizensProtectedRoute({ children }: { children: ReactNode }) {
+  const { session, loading } = useCitizensAuth()
 
   if (loading) {
     return (

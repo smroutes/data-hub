@@ -1,11 +1,11 @@
 import { LogOut } from "lucide-react"
-import { useAuth } from "@/lib/AuthContext"
-import { usernameFromSession } from "@/lib/auth"
+import { useCitizensAuth } from "@/lib/CitizensAuthContext"
+import { usernameFromSession } from "@/lib/citizensAuth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
-export function Dashboard() {
-  const { session, signOut } = useAuth()
+export function CitizensDashboard() {
+  const { session, signOut } = useCitizensAuth()
   const username = session ? usernameFromSession(session) : ""
 
   return (
@@ -35,8 +35,8 @@ export function Dashboard() {
           <CardContent>
             <p className="text-sm text-muted-foreground">
               This is a placeholder landing page -- the login/auth flow is wired up
-              end-to-end against GoTrue + PostgREST; record CRUD screens are a
-              separate follow-up.
+              end-to-end against the citizen-records stack's GoTrue + PostgREST
+              gateway; record CRUD screens are a separate follow-up.
             </p>
           </CardContent>
         </Card>

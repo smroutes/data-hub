@@ -1,21 +1,22 @@
 import { useState } from "react"
+import type { FormEvent } from "react"
 import { Navigate } from "react-router-dom"
 import { Loader2, LogIn } from "lucide-react"
-import { useAuth } from "@/lib/AuthContext"
+import { useCitizensAuth } from "@/lib/CitizensAuthContext"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
-export function Login() {
-  const { session, signIn } = useAuth()
+export function CitizensLogin() {
+  const { session, signIn } = useCitizensAuth()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  if (session) return <Navigate to="/" replace />
+  if (session) return <Navigate to="/citizens" replace />
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!username.trim() || !password) {
       setError("Enter your username and password.")
@@ -55,7 +56,7 @@ export function Login() {
               placeholder="Password"
               autoComplete="current-password"
             />
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
             <Button type="submit" disabled={loading} className="mt-1">
               {loading ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
               Sign in

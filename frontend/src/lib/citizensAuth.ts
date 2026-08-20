@@ -1,3 +1,8 @@
+// Client for the citizen-records stack (../db), a separate app on its own
+// droplet -- so this talks cross-origin to its Caddy gateway, unlike the
+// DataHub search API which is same-origin (see lib/api.ts).
+const API_BASE = import.meta.env.VITE_CITIZENS_API_URL ?? "http://localhost:8081"
+
 const STORAGE_KEY = "citizen_portal_session"
 const EMAIL_DOMAIN = "internal.local"
 
@@ -67,7 +72,7 @@ async function parseAuthError(res: Response): Promise<string> {
 
 export async function login(username: string, password: string): Promise<Session> {
   const email = `${username.trim()}@${EMAIL_DOMAIN}`
-  const res = await fetch("/auth/token?grant_type=password", {
+  const res = await fetch(`${API_BASE}/auth/token?grant_type=password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -77,7 +82,7 @@ export async function login(username: string, password: string): Promise<Session
 }
 
 export async function refresh(session: Session): Promise<Session> {
-  const res = await fetch("/auth/token?grant_type=refresh_token", {
+  const res = await fetch(`${API_BASE}/auth/token?grant_type=refresh_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: session.refresh_token }),
@@ -88,7 +93,7 @@ export async function refresh(session: Session): Promise<Session> {
 
 export async function logout(session: Session | null): Promise<void> {
   if (session) {
-    await fetch("/auth/logout", {
+    await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
       headers: { Authorization: `Bearer ${session.access_token}` },
     }).catch(() => {})

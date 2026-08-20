@@ -83,8 +83,11 @@ services:
     ports:
       - "127.0.0.1:3000:3000" # host-local only; put a reverse proxy in front for real access
 
-  app:
-    build: ./app
+  # Public HTTPS entrypoint into auth/rest for the login UI, which lives in
+  # ../frontend (a different app, on a different droplet) and calls this
+  # over the network -- so unlike a same-droplet setup, CORS is required.
+  gateway:
+    image: caddy:2.8-alpine
     restart: unless-stopped
     depends_on:
       - auth
@@ -93,17 +96,20 @@ services:
       # Real domain -> Caddy auto-provisions HTTPS. Leave unset for local
       # dev (plain HTTP on the port below).
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
-    ports:
-      # Defaults avoid clashing with the other app in this repo (which
-      # uses 80/443 on a dev machine running both). Override to 80/443
-      # in production.
-      - "${APP_HTTP_PORT:-8080}:80"
-      - "${APP_HTTPS_PORT:-8443}:443"
+      # Origin of the frontend calling this API -- set to your real
+      # frontend domain (e.g. https://wb275.in) in production.
+      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:5173}
     volumes:
-      - app_caddy_data:/data
-      - app_caddy_config:/config
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - gateway_caddy_data:/data
+      - gateway_caddy_config:/config
+    ports:
+      # Defaults avoid clashing with the other app in this repo. Override
+      # to 80/443 in production.
+      - "${GATEWAY_HTTP_PORT:-8081}:80"
+      - "${GATEWAY_HTTPS_PORT:-8444}:443"
 
 volumes:
   pgdata:
-  app_caddy_data:
-  app_caddy_config:
+  gateway_caddy_data:
+  gateway_caddy_config:
