@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { AlertCircle, Loader2, Save } from "lucide-react"
+import { AlertCircle, Loader2, Printer, Save } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -16,11 +16,12 @@ export function ApplicationForm({
   submitLabel = "Save",
 }: {
   initial?: ApplicationInput
-  onSubmit: (input: ApplicationInput) => Promise<void>
+  onSubmit: (input: ApplicationInput, options: { print: boolean }) => Promise<void>
   submitLabel?: string
 }) {
   const [values, setValues] = useState<ApplicationInput>({
     name: initial?.name ?? "",
+    relative_name: initial?.relative_name ?? "",
     application_number: initial?.application_number ?? "",
     mobile_number: initial?.mobile_number ?? "",
     aadhaar_number: initial?.aadhaar_number ?? "",
@@ -60,8 +61,7 @@ export function ApplicationForm({
     return Object.keys(next).length === 0
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function submit(print: boolean) {
     setSubmitError("")
     if (!validate()) {
       setSubmitError("Please fix the highlighted fields before saving.")
@@ -74,7 +74,7 @@ export function ApplicationForm({
 
     setSaving(true)
     try {
-      await onSubmit(trimmed)
+      await onSubmit(trimmed, { print })
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Save failed.")
     } finally {
@@ -82,117 +82,152 @@ export function ApplicationForm({
     }
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    await submit(false)
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
-            Name <span className="text-red-600 dark:text-red-400">*</span>
-          </label>
-          <Input
-            value={values.name ?? ""}
-            onChange={(e) => set("name", e.target.value)}
-            aria-invalid={!!errors.name}
-          />
-          {errors.name && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
-          )}
+    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-1 overflow-y-auto px-6">
+        <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Name <span className="text-red-600 dark:text-red-400">*</span>
+            </label>
+            <Input
+              value={values.name ?? ""}
+              onChange={(e) => set("name", e.target.value)}
+              aria-invalid={!!errors.name}
+            />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Relative Name (Father/Husband)
+            </label>
+            <Input
+              value={values.relative_name ?? ""}
+              onChange={(e) => set("relative_name", e.target.value)}
+              aria-invalid={!!errors.relative_name}
+            />
+            {errors.relative_name && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.relative_name}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Application Number
+            </label>
+            <Input
+              value={values.application_number ?? ""}
+              onChange={(e) => set("application_number", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">Mobile Number</label>
+            <Input
+              value={values.mobile_number ?? ""}
+              onChange={(e) => set("mobile_number", e.target.value)}
+              placeholder="10-digit mobile number"
+              aria-invalid={!!errors.mobile_number}
+            />
+            {errors.mobile_number && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.mobile_number}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Aadhaar Number
+            </label>
+            <Input
+              value={values.aadhaar_number ?? ""}
+              onChange={(e) => set("aadhaar_number", e.target.value)}
+              placeholder="12-digit Aadhaar number"
+              aria-invalid={!!errors.aadhaar_number}
+            />
+            {errors.aadhaar_number && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.aadhaar_number}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">District</label>
+            <Input value={values.district ?? ""} onChange={(e) => set("district", e.target.value)} />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
+            <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
+              <option value="">Select a block</option>
+              {BLOCK_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.blocks.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Full Address <span className="text-red-600 dark:text-red-400">*</span>
+            </label>
+            <Textarea
+              value={values.address ?? ""}
+              onChange={(e) => set("address", e.target.value)}
+              aria-invalid={!!errors.address}
+            />
+            {errors.address && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">Voter Number</label>
+            <Input
+              value={values.voter_number ?? ""}
+              onChange={(e) => set("voter_number", e.target.value)}
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
-            Application Number
-          </label>
-          <Input
-            value={values.application_number ?? ""}
-            onChange={(e) => set("application_number", e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Mobile Number</label>
-          <Input
-            value={values.mobile_number ?? ""}
-            onChange={(e) => set("mobile_number", e.target.value)}
-            placeholder="10-digit mobile number"
-            aria-invalid={!!errors.mobile_number}
-          />
-          {errors.mobile_number && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.mobile_number}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Aadhaar Number</label>
-          <Input
-            value={values.aadhaar_number ?? ""}
-            onChange={(e) => set("aadhaar_number", e.target.value)}
-            placeholder="12-digit Aadhaar number"
-            aria-invalid={!!errors.aadhaar_number}
-          />
-          {errors.aadhaar_number && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.aadhaar_number}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">District</label>
-          <Input value={values.district ?? ""} onChange={(e) => set("district", e.target.value)} />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
-          <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
-            <option value="">Select a block</option>
-            {BLOCK_GROUPS.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.blocks.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </Select>
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-foreground">
-            Full Address <span className="text-red-600 dark:text-red-400">*</span>
-          </label>
-          <Textarea
-            value={values.address ?? ""}
-            onChange={(e) => set("address", e.target.value)}
-            aria-invalid={!!errors.address}
-          />
-          {errors.address && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Voter Number</label>
-          <Input
-            value={values.voter_number ?? ""}
-            onChange={(e) => set("voter_number", e.target.value)}
-          />
-        </div>
+        {submitError && (
+          <div
+            role="alert"
+            className="mb-4 flex items-start gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            <span>{submitError}</span>
+          </div>
+        )}
       </div>
 
-      {submitError && (
-        <div
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <span>{submitError}</span>
-        </div>
-      )}
-
-      <Button type="submit" disabled={saving} className="self-start">
-        {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-        {submitLabel}
-      </Button>
+      <div className="flex shrink-0 gap-2 border-t px-6 py-4">
+        <Button type="submit" disabled={saving}>
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+          {submitLabel}
+        </Button>
+        <Button type="button" variant="outline" disabled={saving} onClick={() => submit(true)}>
+          <Printer className="size-4" />
+          {submitLabel} and Print
+        </Button>
+      </div>
     </form>
   )
 }

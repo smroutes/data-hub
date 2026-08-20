@@ -11,10 +11,7 @@ import { usernameFromSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 
 // Add more entries here as sections come online.
-const NAV_ITEMS = [
-  { to: "/search", label: "Search" },
-  { to: "/applications", label: "Applications" },
-]
+const NAV_ITEMS = [{ to: "/search", label: "Search" }]
 
 export function Header() {
   const { session, signOut } = useAuth()

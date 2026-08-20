@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { Header } from "@/components/Header"
 import { SearchPage } from "@/components/SearchPage"
@@ -8,24 +7,13 @@ import { AuthProvider } from "@/lib/AuthContext"
 import { ProtectedRoute } from "@/lib/ProtectedRoute"
 import { Login } from "@/pages/Login"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
-import { NewApplication } from "@/pages/NewApplication"
-import { ApplicationDetail } from "@/pages/ApplicationDetail"
-import { ApplicationsList } from "@/pages/ApplicationsList"
 
 function Search() {
-  const [selectedId, setSelectedId] = useState(datasets[0].id)
-  const selected = datasets.find((d) => d.id === selectedId) ?? datasets[0]
-
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <Header />
       <div className="flex-1">
-        <SearchPage
-          key={selected.id}
-          dataset={selected}
-          datasets={datasets}
-          onSelectDataset={setSelectedId}
-        />
+        <SearchPage dataset={datasets[0]} />
       </div>
       <Footer />
     </div>
@@ -44,30 +32,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <Search />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/applications"
-            element={
-              <ProtectedRoute>
-                <ApplicationsList />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/applications/new"
-            element={
-              <ProtectedRoute>
-                <NewApplication />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/applications/:id"
-            element={
-              <ProtectedRoute>
-                <ApplicationDetail />
               </ProtectedRoute>
             }
           />

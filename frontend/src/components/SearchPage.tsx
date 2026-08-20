@@ -1,6 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Search, Loader2, ChevronDown, Plus } from "lucide-react"
+import { Search, Loader2, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -11,12 +10,6 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableHeader,
@@ -33,22 +26,32 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { searchRecords } from "@/lib/api"
+import { searchApplications } from "@/lib/applicationsApi"
+import { SubmissionFlagBadge } from "@/components/SubmissionFlagBadge"
+import { ApplicationFormModal } from "@/components/ApplicationFormModal"
+import { useAuth } from "@/lib/AuthContext"
 import type { Dataset } from "@/datasets"
+import type { Application } from "@/lib/applicationsApi"
 import type { SearchResult } from "@/types"
 
 function findNameColumn(columns: string[]) {
   return columns.find((c) => c.toLowerCase().includes("name")) ?? columns[0]
 }
 
-export function SearchPage({
-  dataset,
-  datasets,
-  onSelectDataset,
-}: {
-  dataset: Dataset
-  datasets: Dataset[]
-  onSelectDataset: (id: string) => void
-}) {
+// Annapurna Scheme data now lives in Postgres (synced from the CSV, plus
+// whatever staff add via "New Application"), so it's searched there instead
+// of the DuckDB/parquet path other datasets still use. These are the
+// columns worth showing in the results table -- id/timestamps stay hidden.
+const ANNAPURNA_COLUMNS: { key: string; label: string }[] = [
+  { key: "name", label: "Name" },
+  { key: "application_number", label: "Application Number" },
+  { key: "mobile_number", label: "Mobile Number" },
+  { key: "district", label: "District" },
+  { key: "block", label: "Block" },
+  { key: "address", label: "Address" },
+]
+
+export function SearchPage({ dataset }: { dataset: Dataset }) {
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(dataset.fields.map((f) => [f.param, ""]))
   )
@@ -56,25 +59,35 @@ export function SearchPage({
   const [status, setStatus] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [selectedRow, setSelectedRow] = useState<SearchResult | null>(null)
-  const navigate = useNavigate()
+  const [noResults, setNoResults] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [formTarget, setFormTarget] = useState<Application | null>(null)
+  const { session } = useAuth()
+  const isAnnapurna = dataset.id === "annapurna"
 
   async function runSearch() {
     const hasValue = Object.values(values).some((v) => v.trim())
     if (!hasValue) {
       setStatus("Enter at least one search field.")
       setResults([])
+      setNoResults(false)
       return
     }
     setLoading(true)
     setStatus("")
+    setNoResults(false)
     try {
-      const rows = await searchRecords(values, dataset.id)
+      const rows =
+        isAnnapurna && session
+          ? ((await searchApplications(session, values.q ?? "")) as unknown as SearchResult[])
+          : await searchRecords(values, dataset.id)
       setResults(rows)
       setStatus(
         rows.length
           ? `${rows.length} result${rows.length === 1 ? "" : "s"} found.`
           : "No results found."
       )
+      setNoResults(rows.length === 0)
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Search failed.")
       setResults([])
@@ -83,8 +96,15 @@ export function SearchPage({
     }
   }
 
-  const columns = results.length ? Object.keys(results[0]) : []
-  const nameColumn = findNameColumn(columns)
+  const columns = isAnnapurna
+    ? ANNAPURNA_COLUMNS.map((c) => c.key)
+    : results.length
+      ? Object.keys(results[0])
+      : []
+  const columnLabels = isAnnapurna
+    ? Object.fromEntries(ANNAPURNA_COLUMNS.map((c) => [c.key, c.label]))
+    : {}
+  const nameColumn = isAnnapurna ? "name" : findNameColumn(columns)
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:py-10">
@@ -95,39 +115,6 @@ export function SearchPage({
             <CardDescription>{dataset.description}</CardDescription>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            {dataset.id === "annapurna" && (
-              <Button size="sm" onClick={() => navigate("/applications/new")}>
-                <Plus className="size-3.5" />
-                New Application
-              </Button>
-            )}
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="max-w-[40vw] gap-1.5 sm:max-w-none">
-                  <span className="truncate">{dataset.title}</span>
-                  <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {datasets.map((d) => (
-                  <DropdownMenuItem
-                    key={d.id}
-                    disabled={!d.available}
-                    onSelect={() => onSelectDataset(d.id)}
-                  >
-                    <div className="flex flex-1 flex-col">
-                      <span className="font-medium">{d.title}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {d.available ? d.description : "Coming soon"}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -175,13 +162,30 @@ export function SearchPage({
             <p className="text-muted-foreground mt-3 text-sm">{status}</p>
           )}
 
+          {noResults && dataset.id === "annapurna" && (
+            <div className="mt-4 flex flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center">
+              <p className="text-base text-foreground">
+                No matching record found for this search.
+              </p>
+              <Button
+                onClick={() => {
+                  setFormTarget(null)
+                  setFormOpen(true)
+                }}
+              >
+                <Plus className="size-4" />
+                Add New Application
+              </Button>
+            </div>
+          )}
+
           {results.length > 0 && (
             <div className="mt-4 max-h-[60vh] overflow-y-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     {columns.map((col) => (
-                      <TableHead key={col}>{col}</TableHead>
+                      <TableHead key={col}>{columnLabels[col] ?? col}</TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
@@ -192,10 +196,23 @@ export function SearchPage({
                         col === nameColumn ? (
                           <TableCell key={col}>
                             <button
-                              onClick={() => setSelectedRow(row)}
-                              className="text-primary font-medium underline-offset-2 hover:underline"
+                              onClick={() => {
+                                if (isAnnapurna) {
+                                  setFormTarget(row as unknown as Application)
+                                  setFormOpen(true)
+                                } else {
+                                  setSelectedRow(row)
+                                }
+                              }}
+                              className="inline-flex items-center gap-2 text-primary font-medium underline-offset-2 hover:underline"
                             >
                               {row[col] ?? ""}
+                              {isAnnapurna && (
+                                <SubmissionFlagBadge
+                                  flag={row.submission_flag as Application["submission_flag"]}
+                                  className="no-underline"
+                                />
+                              )}
                             </button>
                           </TableCell>
                         ) : (
@@ -231,6 +248,15 @@ export function SearchPage({
           </dl>
         </DialogContent>
       </Dialog>
+
+      <ApplicationFormModal
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        application={formTarget}
+        onSaved={() => {
+          if (isAnnapurna) runSearch()
+        }}
+      />
     </div>
   )
 }
