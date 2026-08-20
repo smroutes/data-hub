@@ -9,6 +9,7 @@ import type { ApplicationInput } from "@/lib/applicationsApi"
 
 const MOBILE_RE = /^[6-9]\d{9}$/
 const AADHAAR_RE = /^[2-9]\d{11}$/
+const KNOWN_BLOCKS = new Set(BLOCK_GROUPS.flatMap((g) => g.blocks))
 
 export function ApplicationForm({
   initial,
@@ -172,6 +173,9 @@ export function ApplicationForm({
             <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
             <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
               <option value="">Select a block</option>
+              {values.block && !KNOWN_BLOCKS.has(values.block) && (
+                <option value={values.block}>{values.block}</option>
+              )}
               {BLOCK_GROUPS.map((group) => (
                 <optgroup key={group.label} label={group.label}>
                   {group.blocks.map((b) => (
