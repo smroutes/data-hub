@@ -1,27 +1,15 @@
-import { LogOut } from "lucide-react"
+import { Header } from "@/components/Header"
 import { useAuth } from "@/lib/AuthContext"
 import { usernameFromSession } from "@/lib/auth"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 export function CitizensDashboard() {
-  const { session, signOut } = useAuth()
+  const { session } = useAuth()
   const username = session ? usernameFromSession(session) : ""
 
   return (
     <div className="min-h-svh bg-background">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">
-          <span className="text-lg font-semibold tracking-tight">Citizen Records</span>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{username}</span>
-            <Button variant="outline" size="sm" onClick={() => signOut()}>
-              <LogOut className="size-3.5" />
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <main className="mx-auto max-w-5xl px-4 py-10">
         <Card>

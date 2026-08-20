@@ -15,9 +15,14 @@ function Search() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <Header datasets={datasets} selected={selected} onSelect={setSelectedId} />
+      <Header />
       <div className="flex-1">
-        <SearchPage key={selected.id} dataset={selected} />
+        <SearchPage
+          key={selected.id}
+          dataset={selected}
+          datasets={datasets}
+          onSelectDataset={setSelectedId}
+        />
       </div>
       <Footer />
     </div>

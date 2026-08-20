@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Search, Loader2 } from "lucide-react"
+import { Search, Loader2, ChevronDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,12 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableHeader,
@@ -33,7 +39,15 @@ function findNameColumn(columns: string[]) {
   return columns.find((c) => c.toLowerCase().includes("name")) ?? columns[0]
 }
 
-export function SearchPage({ dataset }: { dataset: Dataset }) {
+export function SearchPage({
+  dataset,
+  datasets,
+  onSelectDataset,
+}: {
+  dataset: Dataset
+  datasets: Dataset[]
+  onSelectDataset: (id: string) => void
+}) {
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(dataset.fields.map((f) => [f.param, ""]))
   )
@@ -73,9 +87,36 @@ export function SearchPage({ dataset }: { dataset: Dataset }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:py-10">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">{dataset.title}</CardTitle>
-          <CardDescription>{dataset.description}</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-xl">{dataset.title}</CardTitle>
+            <CardDescription>{dataset.description}</CardDescription>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="max-w-[40vw] shrink-0 gap-1.5 sm:max-w-none">
+                <span className="truncate">{dataset.title}</span>
+                <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {datasets.map((d) => (
+                <DropdownMenuItem
+                  key={d.id}
+                  disabled={!d.available}
+                  onSelect={() => onSelectDataset(d.id)}
+                >
+                  <div className="flex flex-1 flex-col">
+                    <span className="font-medium">{d.title}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {d.available ? d.description : "Coming soon"}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row">
