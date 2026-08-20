@@ -19,7 +19,7 @@ export function NewApplication() {
   return (
     <div className="min-h-svh bg-background">
       <Header />
-      <main className="mx-auto max-w-2xl px-4 py-10">
+      <main className="mx-auto max-w-3xl px-4 py-10">
         <Card>
           <CardHeader>
             <CardTitle>New Application</CardTitle>

@@ -73,79 +73,81 @@ export function ApplicationForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
-        <Input value={values.name ?? ""} onChange={(e) => set("name", e.target.value)} />
-      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
+          <Input value={values.name ?? ""} onChange={(e) => set("name", e.target.value)} />
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">
-          Application Number
-        </label>
-        <Input
-          value={values.application_number ?? ""}
-          onChange={(e) => set("application_number", e.target.value)}
-        />
-      </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">
+            Application Number
+          </label>
+          <Input
+            value={values.application_number ?? ""}
+            onChange={(e) => set("application_number", e.target.value)}
+          />
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Mobile Number</label>
-        <Input
-          value={values.mobile_number ?? ""}
-          onChange={(e) => set("mobile_number", e.target.value)}
-          placeholder="10-digit mobile number"
-          aria-invalid={!!errors.mobile_number}
-        />
-        {errors.mobile_number && (
-          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.mobile_number}</p>
-        )}
-      </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">Mobile Number</label>
+          <Input
+            value={values.mobile_number ?? ""}
+            onChange={(e) => set("mobile_number", e.target.value)}
+            placeholder="10-digit mobile number"
+            aria-invalid={!!errors.mobile_number}
+          />
+          {errors.mobile_number && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.mobile_number}</p>
+          )}
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Aadhaar Number</label>
-        <Input
-          value={values.aadhaar_number ?? ""}
-          onChange={(e) => set("aadhaar_number", e.target.value)}
-          placeholder="12-digit Aadhaar number"
-          aria-invalid={!!errors.aadhaar_number}
-        />
-        {errors.aadhaar_number && (
-          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.aadhaar_number}</p>
-        )}
-      </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">Aadhaar Number</label>
+          <Input
+            value={values.aadhaar_number ?? ""}
+            onChange={(e) => set("aadhaar_number", e.target.value)}
+            placeholder="12-digit Aadhaar number"
+            aria-invalid={!!errors.aadhaar_number}
+          />
+          {errors.aadhaar_number && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.aadhaar_number}</p>
+          )}
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">District</label>
-        <Input value={values.district ?? ""} onChange={(e) => set("district", e.target.value)} />
-      </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">District</label>
+          <Input value={values.district ?? ""} onChange={(e) => set("district", e.target.value)} />
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
-        <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
-          <option value="">Select a block</option>
-          {BLOCK_GROUPS.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.blocks.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
-      </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
+          <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
+            <option value="">Select a block</option>
+            {BLOCK_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.blocks.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </Select>
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Full Address</label>
-        <Textarea value={values.address ?? ""} onChange={(e) => set("address", e.target.value)} />
-      </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-sm font-medium text-foreground">Full Address</label>
+          <Textarea value={values.address ?? ""} onChange={(e) => set("address", e.target.value)} />
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Voter Number</label>
-        <Input
-          value={values.voter_number ?? ""}
-          onChange={(e) => set("voter_number", e.target.value)}
-        />
+        <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">Voter Number</label>
+          <Input
+            value={values.voter_number ?? ""}
+            onChange={(e) => set("voter_number", e.target.value)}
+          />
+        </div>
       </div>
 
       {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
