@@ -60,6 +60,14 @@ export async function createApplication(
   return row
 }
 
+export async function listApplications(session: Session): Promise<Application[]> {
+  const res = await fetch(`${API_BASE}/rest/applications?order=created_at.desc`, {
+    headers: headers(session),
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return (await res.json()) as Application[]
+}
+
 export async function getApplication(session: Session, id: string): Promise<Application | null> {
   const res = await fetch(`${API_BASE}/rest/applications?id=eq.${id}`, {
     headers: headers(session),
