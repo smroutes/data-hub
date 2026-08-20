@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Loader2, Save } from "lucide-react"
+import { AlertCircle, Loader2, Save } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -39,9 +39,17 @@ export function ApplicationForm({
 
   function validate(): boolean {
     const next: Record<string, string> = {}
+    const name = (values.name ?? "").trim()
+    const address = (values.address ?? "").trim()
     const mobile = (values.mobile_number ?? "").trim()
     const aadhaar = (values.aadhaar_number ?? "").trim()
 
+    if (!name) {
+      next.name = "Name is required."
+    }
+    if (!address) {
+      next.address = "Full address is required."
+    }
     if (mobile && !MOBILE_RE.test(mobile)) {
       next.mobile_number = "Enter a valid 10-digit Indian mobile number, or leave it blank."
     }
@@ -55,7 +63,10 @@ export function ApplicationForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitError("")
-    if (!validate()) return
+    if (!validate()) {
+      setSubmitError("Please fix the highlighted fields before saving.")
+      return
+    }
 
     const trimmed: ApplicationInput = Object.fromEntries(
       Object.entries(values).map(([k, v]) => [k, typeof v === "string" ? v.trim() || null : v])
@@ -75,8 +86,17 @@ export function ApplicationForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
-          <Input value={values.name ?? ""} onChange={(e) => set("name", e.target.value)} />
+          <label className="mb-1 block text-sm font-medium text-foreground">
+            Name <span className="text-red-600 dark:text-red-400">*</span>
+          </label>
+          <Input
+            value={values.name ?? ""}
+            onChange={(e) => set("name", e.target.value)}
+            aria-invalid={!!errors.name}
+          />
+          {errors.name && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+          )}
         </div>
 
         <div>
@@ -137,8 +157,17 @@ export function ApplicationForm({
         </div>
 
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-foreground">Full Address</label>
-          <Textarea value={values.address ?? ""} onChange={(e) => set("address", e.target.value)} />
+          <label className="mb-1 block text-sm font-medium text-foreground">
+            Full Address <span className="text-red-600 dark:text-red-400">*</span>
+          </label>
+          <Textarea
+            value={values.address ?? ""}
+            onChange={(e) => set("address", e.target.value)}
+            aria-invalid={!!errors.address}
+          />
+          {errors.address && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
+          )}
         </div>
 
         <div>
@@ -150,7 +179,15 @@ export function ApplicationForm({
         </div>
       </div>
 
-      {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
+      {submitError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <span>{submitError}</span>
+        </div>
+      )}
 
       <Button type="submit" disabled={saving} className="self-start">
         {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}

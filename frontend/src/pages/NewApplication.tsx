@@ -23,7 +23,7 @@ export function NewApplication() {
         <Card>
           <CardHeader>
             <CardTitle>New Application</CardTitle>
-            <CardDescription>Annapurna Scheme -- nothing here is mandatory.</CardDescription>
+            <CardDescription>Annapurna Scheme -- Name and Full Address are required.</CardDescription>
           </CardHeader>
           <CardContent>
             <ApplicationForm onSubmit={handleSubmit} submitLabel="Save Application" />

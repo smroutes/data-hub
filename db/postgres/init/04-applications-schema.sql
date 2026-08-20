@@ -1,7 +1,7 @@
 -- "New Application" form data (Annapurna Scheme section of the DataHub
 -- search app). Separate from `citizens` -- this is staff-entered
 -- application intake, not the searchable scheme dataset itself.
--- Every field is optional except id/timestamps, per product requirements.
+-- Name and address are required; every other field is optional.
 
 CREATE TABLE IF NOT EXISTS public.applications (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -15,6 +15,11 @@ CREATE TABLE IF NOT EXISTS public.applications (
   voter_number        text,
   created_at          timestamptz NOT NULL DEFAULT now(),
   updated_at          timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT applications_name_required
+    CHECK (name IS NOT NULL AND btrim(name) <> ''),
+  CONSTRAINT applications_address_required
+    CHECK (address IS NOT NULL AND btrim(address) <> ''),
 
   -- Format checks only apply when a value is actually provided.
   CONSTRAINT applications_mobile_format
