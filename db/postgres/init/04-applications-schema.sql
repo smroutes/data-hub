@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS public.applications (
   voter_number        text,
   relative_name       text,
   submission_flag     text, -- 'newly_submitted' | 're_submitted' | null
+  application_mode    text, -- 'offline' | 'online' | 'not_applied' | null
 
   -- Populated only for rows synced in from the Annapurna Scheme CSV
   -- (see scripts/import-annapurna.sh); left null for staff-entered rows.
@@ -39,7 +40,9 @@ CREATE TABLE IF NOT EXISTS public.applications (
   CONSTRAINT applications_aadhaar_format
     CHECK (aadhaar_number IS NULL OR aadhaar_number ~ '^[2-9][0-9]{11}$'),
   CONSTRAINT applications_submission_flag_valid
-    CHECK (submission_flag IS NULL OR submission_flag IN ('newly_submitted', 're_submitted'))
+    CHECK (submission_flag IS NULL OR submission_flag IN ('newly_submitted', 're_submitted')),
+  CONSTRAINT applications_application_mode_valid
+    CHECK (application_mode IS NULL OR application_mode IN ('offline', 'online', 'not_applied'))
 );
 
 CREATE INDEX IF NOT EXISTS applications_name_idx        ON public.applications (name);

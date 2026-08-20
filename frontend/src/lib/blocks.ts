@@ -1,6 +1,5 @@
-// CD Block dropdown for the New Application form. Pandabeswar is pinned to
-// the top (most of this office's applications come from there), followed
-// by the rest of Paschim Bardhaman -- the only district this office covers.
+// CD Block dropdown for the New Application form -- this office only
+// covers Pandabeswar and Faridpur-Durgapur.
 export interface BlockGroup {
   label: string
   blocks: string[]
@@ -8,16 +7,5 @@ export interface BlockGroup {
 
 export const BLOCK_GROUPS: BlockGroup[] = [
   { label: "Pandabeswar", blocks: ["Pandabeswar"] },
-  {
-    label: "Paschim Bardhaman (other blocks)",
-    blocks: [
-      "Andal",
-      "Faridpur-Durgapur",
-      "Kanksa",
-      "Salanpur",
-      "Barabani",
-      "Jamuria",
-      "Raniganj",
-    ],
-  },
+  { label: "Faridpur-Durgapur", blocks: ["Faridpur-Durgapur"] },
 ]

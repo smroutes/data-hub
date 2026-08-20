@@ -13,6 +13,7 @@ export interface Application {
   voter_number: string | null
   relative_name: string | null
   submission_flag: "newly_submitted" | "re_submitted" | null
+  application_mode: "offline" | "online" | "not_applied" | null
   // Populated only for rows synced in from the Annapurna Scheme CSV.
   sl_no: string | null
   gp_ward: string | null
@@ -37,6 +38,7 @@ export type ApplicationInput = Partial<
     | "voter_number"
     | "relative_name"
     | "submission_flag"
+    | "application_mode"
   >
 >
 

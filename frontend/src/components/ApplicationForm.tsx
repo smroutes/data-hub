@@ -20,7 +20,9 @@ export function ApplicationForm({
   onSubmit: (input: ApplicationInput, options: { print: boolean }) => Promise<void>
   submitLabel?: string
 }) {
-  const [values, setValues] = useState<ApplicationInput>({
+  const [values, setValues] = useState<
+    Omit<ApplicationInput, "application_mode"> & { application_mode: string }
+  >({
     name: initial?.name ?? "",
     relative_name: initial?.relative_name ?? "",
     application_number: initial?.application_number ?? "",
@@ -30,12 +32,13 @@ export function ApplicationForm({
     block: initial?.block ?? "",
     address: initial?.address ?? "",
     voter_number: initial?.voter_number ?? "",
+    application_mode: initial?.application_mode ?? "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState("")
   const [saving, setSaving] = useState(false)
 
-  function set<K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) {
+  function set<K extends keyof typeof values>(key: K, value: (typeof values)[K]) {
     setValues((v) => ({ ...v, [key]: value }))
   }
 
@@ -208,6 +211,21 @@ export function ApplicationForm({
               value={values.voter_number ?? ""}
               onChange={(e) => set("voter_number", e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Application Mode
+            </label>
+            <Select
+              value={values.application_mode}
+              onChange={(e) => set("application_mode", e.target.value)}
+            >
+              <option value="">None</option>
+              <option value="offline">Offline</option>
+              <option value="online">Online</option>
+              <option value="not_applied">Not Applied</option>
+            </Select>
           </div>
         </div>
 
