@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Search, Loader2, ChevronDown } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Search, Loader2, ChevronDown, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -55,6 +56,7 @@ export function SearchPage({
   const [status, setStatus] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [selectedRow, setSelectedRow] = useState<SearchResult | null>(null)
+  const navigate = useNavigate()
 
   async function runSearch() {
     const hasValue = Object.values(values).some((v) => v.trim())
@@ -93,30 +95,39 @@ export function SearchPage({
             <CardDescription>{dataset.description}</CardDescription>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="max-w-[40vw] shrink-0 gap-1.5 sm:max-w-none">
-                <span className="truncate">{dataset.title}</span>
-                <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex shrink-0 items-center gap-2">
+            {dataset.id === "annapurna" && (
+              <Button size="sm" onClick={() => navigate("/applications/new")}>
+                <Plus className="size-3.5" />
+                New Application
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {datasets.map((d) => (
-                <DropdownMenuItem
-                  key={d.id}
-                  disabled={!d.available}
-                  onSelect={() => onSelectDataset(d.id)}
-                >
-                  <div className="flex flex-1 flex-col">
-                    <span className="font-medium">{d.title}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {d.available ? d.description : "Coming soon"}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="max-w-[40vw] gap-1.5 sm:max-w-none">
+                  <span className="truncate">{dataset.title}</span>
+                  <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {datasets.map((d) => (
+                  <DropdownMenuItem
+                    key={d.id}
+                    disabled={!d.available}
+                    onSelect={() => onSelectDataset(d.id)}
+                  >
+                    <div className="flex flex-1 flex-col">
+                      <span className="font-medium">{d.title}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {d.available ? d.description : "Coming soon"}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row">

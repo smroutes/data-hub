@@ -1,7 +1,7 @@
 // Client for the citizen-records stack (../db), a separate app on its own
 // droplet -- so this talks cross-origin to its Caddy gateway, unlike the
 // DataHub search API which is same-origin (see lib/api.ts).
-const API_BASE = import.meta.env.VITE_CITIZENS_API_URL ?? "http://localhost:8081"
+export const API_BASE = import.meta.env.VITE_CITIZENS_API_URL ?? "http://localhost:8081"
 
 const STORAGE_KEY = "citizen_portal_session"
 const EMAIL_DOMAIN = "internal.local"

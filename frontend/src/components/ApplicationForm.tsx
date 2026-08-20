@@ -1,0 +1,159 @@
+import { useState } from "react"
+import { Loader2, Save } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { BLOCK_GROUPS } from "@/lib/blocks"
+import type { ApplicationInput } from "@/lib/applicationsApi"
+
+const MOBILE_RE = /^[6-9]\d{9}$/
+const AADHAAR_RE = /^[2-9]\d{11}$/
+
+export function ApplicationForm({
+  initial,
+  onSubmit,
+  submitLabel = "Save",
+}: {
+  initial?: ApplicationInput
+  onSubmit: (input: ApplicationInput) => Promise<void>
+  submitLabel?: string
+}) {
+  const [values, setValues] = useState<ApplicationInput>({
+    name: initial?.name ?? "",
+    application_number: initial?.application_number ?? "",
+    mobile_number: initial?.mobile_number ?? "",
+    aadhaar_number: initial?.aadhaar_number ?? "",
+    district: initial?.district ?? "",
+    block: initial?.block ?? "",
+    address: initial?.address ?? "",
+    voter_number: initial?.voter_number ?? "",
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitError, setSubmitError] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  function set<K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) {
+    setValues((v) => ({ ...v, [key]: value }))
+  }
+
+  function validate(): boolean {
+    const next: Record<string, string> = {}
+    const mobile = (values.mobile_number ?? "").trim()
+    const aadhaar = (values.aadhaar_number ?? "").trim()
+
+    if (mobile && !MOBILE_RE.test(mobile)) {
+      next.mobile_number = "Enter a valid 10-digit Indian mobile number, or leave it blank."
+    }
+    if (aadhaar && !AADHAAR_RE.test(aadhaar)) {
+      next.aadhaar_number = "Enter a valid 12-digit Aadhaar number, or leave it blank."
+    }
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitError("")
+    if (!validate()) return
+
+    const trimmed: ApplicationInput = Object.fromEntries(
+      Object.entries(values).map(([k, v]) => [k, typeof v === "string" ? v.trim() || null : v])
+    )
+
+    setSaving(true)
+    try {
+      await onSubmit(trimmed)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Save failed.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
+        <Input value={values.name ?? ""} onChange={(e) => set("name", e.target.value)} />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">
+          Application Number
+        </label>
+        <Input
+          value={values.application_number ?? ""}
+          onChange={(e) => set("application_number", e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">Mobile Number</label>
+        <Input
+          value={values.mobile_number ?? ""}
+          onChange={(e) => set("mobile_number", e.target.value)}
+          placeholder="10-digit mobile number"
+          aria-invalid={!!errors.mobile_number}
+        />
+        {errors.mobile_number && (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.mobile_number}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">Aadhaar Number</label>
+        <Input
+          value={values.aadhaar_number ?? ""}
+          onChange={(e) => set("aadhaar_number", e.target.value)}
+          placeholder="12-digit Aadhaar number"
+          aria-invalid={!!errors.aadhaar_number}
+        />
+        {errors.aadhaar_number && (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.aadhaar_number}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">District</label>
+        <Input value={values.district ?? ""} onChange={(e) => set("district", e.target.value)} />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
+        <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
+          <option value="">Select a block</option>
+          {BLOCK_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.blocks.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </Select>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">Full Address</label>
+        <Textarea value={values.address ?? ""} onChange={(e) => set("address", e.target.value)} />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-foreground">Voter Number</label>
+        <Input
+          value={values.voter_number ?? ""}
+          onChange={(e) => set("voter_number", e.target.value)}
+        />
+      </div>
+
+      {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
+
+      <Button type="submit" disabled={saving} className="self-start">
+        {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+        {submitLabel}
+      </Button>
+    </form>
+  )
+}

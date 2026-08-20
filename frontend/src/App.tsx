@@ -8,6 +8,8 @@ import { AuthProvider } from "@/lib/AuthContext"
 import { ProtectedRoute } from "@/lib/ProtectedRoute"
 import { Login } from "@/pages/Login"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
+import { NewApplication } from "@/pages/NewApplication"
+import { ApplicationDetail } from "@/pages/ApplicationDetail"
 
 function Search() {
   const [selectedId, setSelectedId] = useState(datasets[0].id)
@@ -41,6 +43,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Search />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/applications/new"
+            element={
+              <ProtectedRoute>
+                <NewApplication />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/applications/:id"
+            element={
+              <ProtectedRoute>
+                <ApplicationDetail />
               </ProtectedRoute>
             }
           />

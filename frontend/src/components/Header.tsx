@@ -1,6 +1,11 @@
 import { NavLink } from "react-router-dom"
-import { Database, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ChevronDown, Database, LogOut } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/AuthContext"
 import { usernameFromSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
@@ -47,20 +52,25 @@ export function Header() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground">
-              {initial}
-            </span>
-            <span className="hidden text-sm font-medium text-foreground sm:inline">
-              {username}
-            </span>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => signOut()}>
-            <LogOut className="size-3.5" />
-            Sign out
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex cursor-pointer items-center gap-2 rounded-md py-1 pr-1 pl-1.5 transition-colors hover:bg-accent">
+              <span className="flex size-8 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground">
+                {initial}
+              </span>
+              <span className="hidden text-sm font-medium text-foreground sm:inline">
+                {username}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => signOut()}>
+              <LogOut className="size-3.5" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   )

@@ -1,0 +1,103 @@
+// CD Block dropdown for the New Application form. Pandabeswar is pinned to
+// the top (most of this office's applications come from there), followed
+// by the rest of Paschim Bardhaman, then Birbhum, Bankura, and Purba
+// Bardhaman -- the districts this office actually covers.
+export interface BlockGroup {
+  label: string
+  blocks: string[]
+}
+
+export const BLOCK_GROUPS: BlockGroup[] = [
+  { label: "Pandabeswar", blocks: ["Pandabeswar"] },
+  {
+    label: "Paschim Bardhaman (other blocks)",
+    blocks: [
+      "Andal",
+      "Faridpur-Durgapur",
+      "Kanksa",
+      "Salanpur",
+      "Barabani",
+      "Jamuria",
+      "Raniganj",
+    ],
+  },
+  {
+    label: "Birbhum",
+    blocks: [
+      "Mohammad Bazar",
+      "Rajnagar",
+      "Suri I",
+      "Suri II",
+      "Sainthia",
+      "Dubrajpur",
+      "Khoyrasol",
+      "Labpur",
+      "Nanoor",
+      "Bolpur Sriniketan",
+      "Ilambazar",
+      "Murarai I",
+      "Murarai II",
+      "Nalhati I",
+      "Nalhati II",
+      "Rampurhat I",
+      "Rampurhat II",
+      "Mayureswar I",
+      "Mayureswar II",
+    ],
+  },
+  {
+    label: "Bankura",
+    blocks: [
+      "Bankura I",
+      "Bankura II",
+      "Barjora",
+      "Chhatna",
+      "Gangajalghati",
+      "Mejia",
+      "Onda",
+      "Saltora",
+      "Indpur",
+      "Khatra",
+      "Hirbandh",
+      "Raipur",
+      "Sarenga",
+      "Ranibandh",
+      "Simlapal",
+      "Taldangra",
+      "Indas",
+      "Joypur",
+      "Patrasayer",
+      "Kotulpur",
+      "Sonamukhi",
+      "Bishnupur",
+    ],
+  },
+  {
+    label: "Purba Bardhaman",
+    blocks: [
+      "Ausgram I",
+      "Ausgram II",
+      "Bhatar",
+      "Burdwan I",
+      "Burdwan II",
+      "Galsi I",
+      "Galsi II",
+      "Khandaghosh",
+      "Jamalpur",
+      "Memari I",
+      "Memari II",
+      "Raina I",
+      "Raina II",
+      "Katwa I",
+      "Katwa II",
+      "Ketugram I",
+      "Ketugram II",
+      "Mongalkote",
+      "Kalna I",
+      "Kalna II",
+      "Manteswar",
+      "Purbasthali I",
+      "Purbasthali II",
+    ],
+  },
+]
