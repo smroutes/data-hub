@@ -21,7 +21,7 @@ jobs:
           - image: frontend
             context: ./frontend
             build-args: |
-              VITE_CITIZENS_API_URL=https://api.wb275.in
+              VITE_CITIZENS_API_URL=
 
     steps:
       - name: Checkout

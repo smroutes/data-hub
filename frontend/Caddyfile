@@ -5,6 +5,21 @@
 		reverse_proxy backend:8000
 	}
 
+	# Auth and data for the citizen-records stack live on a separate droplet
+	# (see ../db). Proxying them through this same origin keeps every browser
+	# request under datahub.wb275.in instead of exposing api.wb275.in directly.
+	handle /auth/* {
+		reverse_proxy https://api.wb275.in {
+			header_up Host api.wb275.in
+		}
+	}
+
+	handle /rest/* {
+		reverse_proxy https://api.wb275.in {
+			header_up Host api.wb275.in
+		}
+	}
+
 	handle {
 		root * /srv
 		try_files {path} /index.html
