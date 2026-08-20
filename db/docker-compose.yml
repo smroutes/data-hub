@@ -83,5 +83,27 @@ services:
     ports:
       - "127.0.0.1:3000:3000" # host-local only; put a reverse proxy in front for real access
 
+  app:
+    build: ./app
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - rest
+    environment:
+      # Real domain -> Caddy auto-provisions HTTPS. Leave unset for local
+      # dev (plain HTTP on the port below).
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      # Defaults avoid clashing with the other app in this repo (which
+      # uses 80/443 on a dev machine running both). Override to 80/443
+      # in production.
+      - "${APP_HTTP_PORT:-8080}:80"
+      - "${APP_HTTPS_PORT:-8443}:443"
+    volumes:
+      - app_caddy_data:/data
+      - app_caddy_config:/config
+
 volumes:
   pgdata:
+  app_caddy_data:
+  app_caddy_config:

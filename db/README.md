@@ -6,10 +6,11 @@ signup. Deployed on its **own** droplet, separate from the search app in
 the rest of this repo.
 
 ```
-PostgreSQL  <--  GoTrue (auth)       both connect to the same Postgres,
-     ^       <--  PostgREST (API)    as different restricted roles
-     |
-     └── nightly pg_dump → gzip → Cloudflare R2 (host cron, see scripts/backup.sh)
+app (Caddy + React)  --/auth/*-->  GoTrue   \
+     |                --/rest/*--> PostgREST  }--> PostgreSQL
+     └── serves the login + citizen-records UI    /
+
+nightly pg_dump → gzip → Cloudflare R2 (host cron, see scripts/backup.sh)
 ```
 
 ## Before you start: two things this architecture cannot do
@@ -47,8 +48,30 @@ db/
 │   ├── backup.sh        -- pg_dump -> gzip -> R2, with verification + retention
 │   ├── restore.sh        -- restore a dump from R2 (destructive, confirms twice)
 │   └── lib/sign-service-jwt.py
-└── caddy/Caddyfile.example
+└── app/                 -- React login + citizen-records UI, served by Caddy
+    ├── Dockerfile
+    ├── Caddyfile         -- serves the SPA, proxies /auth/* and /rest/*
+    └── src/
+        ├── lib/auth.ts         -- login/refresh/logout against GoTrue
+        ├── lib/AuthContext.tsx
+        ├── lib/ProtectedRoute.tsx
+        └── pages/{Login,Dashboard}.tsx
 ```
+
+## Local development
+
+```bash
+cd db
+cp .env.example .env   # fill in POSTGRES_PASSWORD, AUTHENTICATOR_PASSWORD,
+                        # GOTRUE_DB_PASSWORD, JWT_SECRET (R2_* can stay blank
+                        # locally -- only scripts/backup.sh needs them)
+docker compose up -d --build
+./scripts/create-admin.sh dev-user
+```
+Open **http://localhost:8080** -- login page first, then the (placeholder)
+authenticated landing page after signing in. `8080`/`8443` are used instead
+of `80`/`443` so this doesn't clash with the other app in this repo if
+you're running both locally at once.
 
 ## Fresh droplet setup
 
@@ -123,17 +146,19 @@ curl -s http://127.0.0.1:9999/token?grant_type=password \
 Returns an `access_token` (JWT) -- send it as `Authorization: Bearer <token>`
 to PostgREST (`http://127.0.0.1:3000/citizens`).
 
-## Reverse proxy (required for real use)
+## Reverse proxy / HTTPS in production
 
-Nothing in this stack is exposed beyond `127.0.0.1` on the droplet itself --
-by design (see Security). To actually reach it from office PCs, put a
-reverse proxy in front with HTTPS. `caddy/Caddyfile.example` shows the
-routing (`/auth/*` → GoTrue, `/rest/*` → PostgREST). Simplest path: run
-Caddy as one more container on this same compose network (same pattern
-used for the main app in this repo -- see `../frontend/Caddyfile` and
-`../docker-compose.prod.yml` for a working example of Caddy + auto-HTTPS
-via a real domain), publishing 80/443 instead of the individual services
-publishing to 127.0.0.1.
+The `app` service *is* the reverse proxy -- it's Caddy, serving the login UI
+and proxying `/auth/*` → GoTrue and `/rest/*` → PostgREST over the internal
+Docker network (same pattern as `../frontend/Caddyfile` in this repo). GoTrue
+and PostgREST additionally publish to `127.0.0.1` directly, for the admin
+scripts and manual `curl` debugging -- not for the office UI, which only
+ever talks to `app`.
+
+For production: set `SITE_ADDRESS=your-domain.com` in `.env` and
+`APP_HTTP_PORT=80`/`APP_HTTPS_PORT=443`, point DNS at the droplet, and Caddy
+auto-provisions Let's Encrypt HTTPS on startup -- no manual cert steps
+(identical mechanism to `../docker-compose.prod.yml`'s `SITE_ADDRESS`).
 
 ## Security checklist
 
@@ -158,8 +183,9 @@ overhead:
 | Postgres (tuned per this compose file) | ~150-200MB |
 | GoTrue | ~20-40MB |
 | PostgREST | ~15-25MB |
+| `app` (Caddy, static files) | ~10-20MB |
 | Ubuntu + Docker daemon | ~150-200MB |
-| **Total idle** | **~350-450MB** |
+| **Total idle** | **~360-470MB** |
 
 Under 2-3 concurrent users doing simple CRUD, expect another 50-100MB of
 headroom used (small connection pools, a handful of queries at a time) --
