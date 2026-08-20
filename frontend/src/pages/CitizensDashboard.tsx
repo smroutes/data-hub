@@ -1,11 +1,11 @@
 import { LogOut } from "lucide-react"
-import { useCitizensAuth } from "@/lib/CitizensAuthContext"
-import { usernameFromSession } from "@/lib/citizensAuth"
+import { useAuth } from "@/lib/AuthContext"
+import { usernameFromSession } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 export function CitizensDashboard() {
-  const { session, signOut } = useCitizensAuth()
+  const { session, signOut } = useAuth()
   const username = session ? usernameFromSession(session) : ""
 
   return (

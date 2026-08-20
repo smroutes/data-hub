@@ -1,20 +1,22 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
-import { Navigate } from "react-router-dom"
+import { Navigate, useLocation } from "react-router-dom"
 import { Loader2, LogIn } from "lucide-react"
-import { useCitizensAuth } from "@/lib/CitizensAuthContext"
+import { useAuth } from "@/lib/AuthContext"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
-export function CitizensLogin() {
-  const { session, signIn } = useCitizensAuth()
+export function Login() {
+  const { session, signIn } = useAuth()
+  const location = useLocation()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  if (session) return <Navigate to="/citizens" replace />
+  const from = (location.state as { from?: string } | null)?.from ?? "/search"
+  if (session) return <Navigate to={from} replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -37,7 +39,7 @@ export function CitizensLogin() {
     <div className="flex min-h-svh items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Citizen Records</CardTitle>
+          <CardTitle className="text-xl">DataHub</CardTitle>
           <CardDescription>Sign in with your office username and password.</CardDescription>
         </CardHeader>
         <CardContent>

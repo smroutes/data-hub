@@ -4,9 +4,9 @@ import { Header } from "@/components/Header"
 import { SearchPage } from "@/components/SearchPage"
 import { Footer } from "@/components/Footer"
 import { datasets } from "@/datasets"
-import { CitizensAuthProvider } from "@/lib/CitizensAuthContext"
-import { CitizensProtectedRoute } from "@/lib/CitizensProtectedRoute"
-import { CitizensLogin } from "@/pages/CitizensLogin"
+import { AuthProvider } from "@/lib/AuthContext"
+import { ProtectedRoute } from "@/lib/ProtectedRoute"
+import { Login } from "@/pages/Login"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
 
 function Search() {
@@ -24,37 +24,31 @@ function Search() {
   )
 }
 
-// Only /login and /citizens talk to the citizen-records stack -- keep that
-// context (and its network call on mount) out of the /search route.
-function CitizensSection({ children }: { children: React.ReactNode }) {
-  return <CitizensAuthProvider>{children}</CitizensAuthProvider>
-}
-
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/search" replace />} />
-        <Route path="/search" element={<Search />} />
-        <Route
-          path="/login"
-          element={
-            <CitizensSection>
-              <CitizensLogin />
-            </CitizensSection>
-          }
-        />
-        <Route
-          path="/citizens"
-          element={
-            <CitizensSection>
-              <CitizensProtectedRoute>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Navigate to="/search" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <Search />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/citizens"
+            element={
+              <ProtectedRoute>
                 <CitizensDashboard />
-              </CitizensProtectedRoute>
-            </CitizensSection>
-          }
-        />
-      </Routes>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

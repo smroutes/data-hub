@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react"
 import type { ReactNode } from "react"
-import * as auth from "@/lib/citizensAuth"
-import type { Session } from "@/lib/citizensAuth"
+import * as auth from "@/lib/auth"
+import type { Session } from "@/lib/auth"
 
 interface AuthState {
   session: Session | null
@@ -10,9 +10,9 @@ interface AuthState {
   signOut: () => Promise<void>
 }
 
-const CitizensAuthContext = createContext<AuthState | null>(null)
+const AuthContext = createContext<AuthState | null>(null)
 
-export function CitizensAuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -34,14 +34,14 @@ export function CitizensAuthProvider({ children }: { children: ReactNode }) {
   }, [session])
 
   return (
-    <CitizensAuthContext.Provider value={{ session, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, loading, signIn, signOut }}>
       {children}
-    </CitizensAuthContext.Provider>
+    </AuthContext.Provider>
   )
 }
 
-export function useCitizensAuth(): AuthState {
-  const ctx = useContext(CitizensAuthContext)
-  if (!ctx) throw new Error("useCitizensAuth must be used within CitizensAuthProvider")
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider")
   return ctx
 }
