@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom"
 import { Database } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useDocumentTitle } from "@/lib/useDocumentTitle"
 
 export function NotFound() {
+  useDocumentTitle("Page Not Found")
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-4 text-center">
       <span className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-orange-600 shadow-sm">

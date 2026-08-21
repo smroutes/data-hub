@@ -1,9 +1,11 @@
 import { Header } from "@/components/Header"
 import { useAuth } from "@/lib/AuthContext"
 import { usernameFromSession } from "@/lib/auth"
+import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 export function CitizensDashboard() {
+  useDocumentTitle("Citizens")
   const { session } = useAuth()
   const username = session ? usernameFromSession(session) : ""
 

@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer"
 import { datasets } from "@/datasets"
 import { AuthProvider } from "@/lib/AuthContext"
 import { ProtectedRoute } from "@/lib/ProtectedRoute"
+import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import { SessionExpiredModal } from "@/components/SessionExpiredModal"
 import { Login } from "@/pages/Login"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
@@ -12,6 +13,7 @@ import { ApplicationsTablePage } from "@/pages/ApplicationsTablePage"
 import { NotFound } from "@/pages/NotFound"
 
 function Search() {
+  useDocumentTitle("Search")
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <Header />

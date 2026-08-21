@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import loginOffice from "@/assets/login-office.jpg"
 
 const QUOTES = [
@@ -40,6 +41,7 @@ const TYPE_SPEED_MS = 35
 const HOLD_AFTER_TYPE_MS = 2800
 
 export function Login() {
+  useDocumentTitle("Sign In")
   const { session, signIn } = useAuth()
   const location = useLocation()
   const [username, setUsername] = useState("")

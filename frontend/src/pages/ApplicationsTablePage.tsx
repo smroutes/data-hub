@@ -13,6 +13,7 @@ import { ApplicationDetailsModal } from "@/components/ApplicationDetailsModal"
 import { useAuth } from "@/lib/AuthContext"
 import { listFlaggedApplications } from "@/lib/applicationsApi"
 import type { Application } from "@/lib/applicationsApi"
+import { useDocumentTitle } from "@/lib/useDocumentTitle"
 
 const PAGE_SIZE = 20
 
@@ -39,6 +40,7 @@ function sortableHeader(label: string) {
 }
 
 export function ApplicationsTablePage() {
+  useDocumentTitle("Applications")
   const { session } = useAuth()
   const [applications, setApplications] = useState<Application[]>([])
   const [total, setTotal] = useState(0)

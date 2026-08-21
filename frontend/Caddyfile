@@ -15,7 +15,9 @@ wb275.in, www.wb275.in {
 }
 
 {$SITE_ADDRESS} {
-	redir / /search permanent
+	# No server-level redirect for "/" -- the React app's own root route
+	# handles this client-side (see App.tsx), so it stays in sync with
+	# route renames instead of needing this file updated too.
 
 	handle /api/* {
 		reverse_proxy backend:8000
