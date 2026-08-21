@@ -30,6 +30,15 @@ export function Header() {
             <span className="text-lg font-semibold tracking-tight text-foreground">
               DataHub
             </span>
+            <span className="h-8 w-px bg-border" />
+            <div className="flex flex-col justify-center">
+              <span className="text-xs leading-tight font-medium text-foreground">
+                পান্ডবেশ্বর
+              </span>
+              <span className="text-xs leading-tight font-medium text-foreground">
+                বিধানসভা
+              </span>
+            </div>
           </div>
 
           <nav className="flex items-center gap-1">

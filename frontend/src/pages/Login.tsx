@@ -39,7 +39,14 @@ export function Login() {
     <div className="flex min-h-svh items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">DataHub</CardTitle>
+          <CardTitle className="flex items-center gap-2.5 text-xl">
+            DataHub
+            <span className="h-8 w-px bg-border" />
+            <span className="flex flex-col justify-center">
+              <span className="text-xs leading-tight font-medium">পান্ডবেশ্বর</span>
+              <span className="text-xs leading-tight font-medium">বিধানসভা</span>
+            </span>
+          </CardTitle>
           <CardDescription>Sign in with your office username and password.</CardDescription>
         </CardHeader>
         <CardContent>

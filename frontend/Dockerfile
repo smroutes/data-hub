@@ -11,5 +11,6 @@ RUN npm run build
 
 FROM caddy:2.8-alpine
 COPY --from=build /app/dist /srv
+COPY landing /srv-landing
 COPY Caddyfile /etc/caddy/Caddyfile
 EXPOSE 80

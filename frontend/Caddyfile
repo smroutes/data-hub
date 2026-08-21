@@ -1,3 +1,14 @@
+# The bare/apex domain is a separate static placeholder page, not the app --
+# keeps it from looking broken while the real site for it is built elsewhere.
+wb275.in, www.wb275.in {
+	root * /srv-landing
+	file_server
+
+	header {
+		-Server
+	}
+}
+
 {$SITE_ADDRESS} {
 	redir / /search permanent
 
