@@ -12,7 +12,7 @@ interface AuthState {
   // signing out, since the UI shows a blocking modal rather than silently
   // dropping to the login page.
   expired: boolean
-  signIn: (username: string, password: string) => Promise<void>
+  signIn: (username: string, password: string, remember?: boolean) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -63,8 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id)
   }, [])
 
-  const signIn = useCallback(async (username: string, password: string) => {
-    const s = await auth.login(username, password)
+  const signIn = useCallback(async (username: string, password: string, remember = true) => {
+    const s = await auth.login(username, password, remember)
     setSession(s)
     setExpired(false)
   }, [])

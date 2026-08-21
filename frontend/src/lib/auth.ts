@@ -34,8 +34,19 @@ export function usernameFromSession(session: Session): string {
   return email.endsWith(`@${EMAIL_DOMAIN}`) ? email.slice(0, -(EMAIL_DOMAIN.length + 1)) : email
 }
 
+// "Remember me" unchecked -> sessionStorage (cleared when the tab closes).
+// Checked (default) -> localStorage (survives browser restarts). Whichever
+// one currently holds a session is treated as the source of truth so a
+// refresh doesn't silently "upgrade" a session-only login into a persistent
+// one.
+function currentStorage(): Storage | null {
+  if (localStorage.getItem(STORAGE_KEY)) return localStorage
+  if (sessionStorage.getItem(STORAGE_KEY)) return sessionStorage
+  return null
+}
+
 export function loadSession(): Session | null {
-  const raw = localStorage.getItem(STORAGE_KEY)
+  const raw = currentStorage()?.getItem(STORAGE_KEY)
   if (!raw) return null
   try {
     return JSON.parse(raw) as Session
@@ -44,18 +55,19 @@ export function loadSession(): Session | null {
   }
 }
 
-function saveSession(res: TokenResponse): Session {
+function saveSession(res: TokenResponse, storage: Storage): Session {
   const session: Session = {
     access_token: res.access_token,
     refresh_token: res.refresh_token,
     expires_at: Math.floor(Date.now() / 1000) + res.expires_in,
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+  storage.setItem(STORAGE_KEY, JSON.stringify(session))
   return session
 }
 
 export function clearSession(): void {
   localStorage.removeItem(STORAGE_KEY)
+  sessionStorage.removeItem(STORAGE_KEY)
 }
 
 export function isExpired(session: Session, skewSeconds = 30): boolean {
@@ -71,7 +83,11 @@ async function parseAuthError(res: Response): Promise<string> {
   }
 }
 
-export async function login(username: string, password: string): Promise<Session> {
+export async function login(
+  username: string,
+  password: string,
+  remember = true
+): Promise<Session> {
   const email = `${username.trim()}@${EMAIL_DOMAIN}`
   const res = await fetch(`${API_BASE}/auth/token?grant_type=password`, {
     method: "POST",
@@ -79,7 +95,7 @@ export async function login(username: string, password: string): Promise<Session
     body: JSON.stringify({ email, password }),
   })
   if (!res.ok) throw new Error(await parseAuthError(res))
-  return saveSession((await res.json()) as TokenResponse)
+  return saveSession((await res.json()) as TokenResponse, remember ? localStorage : sessionStorage)
 }
 
 export async function refresh(session: Session): Promise<Session> {
@@ -89,7 +105,7 @@ export async function refresh(session: Session): Promise<Session> {
     body: JSON.stringify({ refresh_token: session.refresh_token }),
   })
   if (!res.ok) throw new Error(await parseAuthError(res))
-  return saveSession((await res.json()) as TokenResponse)
+  return saveSession((await res.json()) as TokenResponse, currentStorage() ?? localStorage)
 }
 
 export async function logout(session: Session | null): Promise<void> {
