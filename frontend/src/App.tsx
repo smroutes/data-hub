@@ -7,6 +7,7 @@ import { AuthProvider } from "@/lib/AuthContext"
 import { ProtectedRoute } from "@/lib/ProtectedRoute"
 import { Login } from "@/pages/Login"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
+import { NotFound } from "@/pages/NotFound"
 
 function Search() {
   return (
@@ -43,6 +44,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

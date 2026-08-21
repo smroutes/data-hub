@@ -4,6 +4,11 @@ wb275.in, www.wb275.in {
 	root * /srv-landing
 	file_server
 
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+
 	header {
 		-Server
 	}

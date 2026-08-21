@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pandabeswar Bidhansabha</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+  body {
+    font-family: "Noto Sans Bengali", "Inter", system-ui, sans-serif;
+    background: #fafafa;
+    color: #1a1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 2.5rem;
+    text-align: center;
+  }
+  .logo {
+    width: 6rem;
+    height: 6rem;
+    object-fit: contain;
+    opacity: 0.9;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(1.5rem, 5vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  p.note {
+    margin: 0;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 0.9375rem;
+    color: #6b6b6b;
+  }
+  .divider {
+    width: 16rem;
+    max-width: 60vw;
+    height: 1px;
+    margin: -0.25rem 0;
+    border: none;
+    background: linear-gradient(90deg, transparent, #ea580c, transparent);
+  }
+  a.home {
+    margin-top: 0.25rem;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ea580c;
+    text-decoration: none;
+  }
+  a.home:hover {
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="logo.png" alt="Pandabeswar Bidhansabha">
+    <h1>Page not found</h1>
+    <hr class="divider">
+    <p class="note">This page doesn't exist or may have moved.</p>
+    <a class="home" href="/">Back to home</a>
+  </div>
+</body>
+</html>
