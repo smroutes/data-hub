@@ -1,7 +1,7 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import { Navigate, useLocation } from "react-router-dom"
-import { Loader2, LogIn } from "lucide-react"
+import { Loader2, LogIn, ShieldCheck } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -71,8 +71,9 @@ export function Login() {
               Sign in
             </Button>
           </form>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            No public sign-up -- accounts are created by an administrator.
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5 shrink-0" />
+            Need an account? Ask your office administrator.
           </p>
         </CardContent>
       </Card>
