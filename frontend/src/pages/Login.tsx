@@ -15,7 +15,7 @@ export function Login() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const from = (location.state as { from?: string } | null)?.from ?? "/search"
+  const from = (location.state as { from?: string } | null)?.from ?? "/as/search"
   if (session) return <Navigate to={from} replace />
 
   async function handleSubmit(e: FormEvent) {

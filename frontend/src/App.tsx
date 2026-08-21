@@ -5,8 +5,10 @@ import { Footer } from "@/components/Footer"
 import { datasets } from "@/datasets"
 import { AuthProvider } from "@/lib/AuthContext"
 import { ProtectedRoute } from "@/lib/ProtectedRoute"
+import { SessionExpiredModal } from "@/components/SessionExpiredModal"
 import { Login } from "@/pages/Login"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
+import { ApplicationsTablePage } from "@/pages/ApplicationsTablePage"
 import { NotFound } from "@/pages/NotFound"
 
 function Search() {
@@ -25,14 +27,23 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <SessionExpiredModal />
         <Routes>
-          <Route path="/" element={<Navigate to="/search" replace />} />
+          <Route path="/" element={<Navigate to="/as/search" replace />} />
           <Route path="/login" element={<Login />} />
           <Route
-            path="/search"
+            path="/as/search"
             element={
               <ProtectedRoute>
                 <Search />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/as/applications"
+            element={
+              <ProtectedRoute>
+                <ApplicationsTablePage />
               </ProtectedRoute>
             }
           />

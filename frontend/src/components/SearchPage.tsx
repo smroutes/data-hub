@@ -204,13 +204,14 @@ export function SearchPage({ dataset }: { dataset: Dataset }) {
                                   setSelectedRow(row)
                                 }
                               }}
-                              className="inline-flex items-center gap-2 text-primary font-medium underline-offset-2 hover:underline"
+                              className="group inline-flex cursor-pointer items-center gap-2 text-primary font-medium"
                             >
-                              {row[col] ?? ""}
+                              <span className="underline-offset-2 group-hover:underline">
+                                {row[col] ?? ""}
+                              </span>
                               {isAnnapurna && (
                                 <SubmissionFlagBadge
                                   flag={row.submission_flag as Application["submission_flag"]}
-                                  className="no-underline"
                                 />
                               )}
                             </button>

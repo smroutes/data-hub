@@ -55,8 +55,10 @@ export function ApplicationForm({
     if (!address) {
       next.address = "Full address is required."
     }
-    if (mobile && !MOBILE_RE.test(mobile)) {
-      next.mobile_number = "Enter a valid 10-digit Indian mobile number, or leave it blank."
+    if (!mobile) {
+      next.mobile_number = "Mobile number is required."
+    } else if (!MOBILE_RE.test(mobile)) {
+      next.mobile_number = "Enter a valid 10-digit Indian mobile number."
     }
     if (aadhaar && !AADHAAR_RE.test(aadhaar)) {
       next.aadhaar_number = "Enter a valid 12-digit Aadhaar number, or leave it blank."
@@ -136,11 +138,15 @@ export function ApplicationForm({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Mobile Number</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Mobile Number <span className="text-red-600 dark:text-red-400">*</span>
+            </label>
             <Input
               value={values.mobile_number ?? ""}
-              onChange={(e) => set("mobile_number", e.target.value)}
+              onChange={(e) => set("mobile_number", e.target.value.replace(/\D/g, "").slice(0, 10))}
               placeholder="10-digit mobile number"
+              inputMode="numeric"
+              maxLength={10}
               aria-invalid={!!errors.mobile_number}
             />
             {errors.mobile_number && (
