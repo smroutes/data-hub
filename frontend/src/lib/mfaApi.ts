@@ -45,7 +45,7 @@ export async function getTotpFactor(session: Session): Promise<TotpFactor | null
 
 export async function enrollTotp(
   session: Session
-): Promise<{ factorId: string; qrSvg: string; secret: string }> {
+): Promise<{ factorId: string; uri: string; secret: string }> {
   // A previous enrollment attempt that was never confirmed (QR shown, then
   // abandoned/cancelled) leaves an unverified factor behind. GoTrue
   // enforces a unique friendly_name per user, so retrying with the same
@@ -66,8 +66,15 @@ export async function enrollTotp(
     body: JSON.stringify({ factor_type: "totp", friendly_name: "authenticator" }),
   })
   if (!res.ok) throw new Error(await parseError(res))
-  const body = (await res.json()) as { id: string; totp: { qr_code: string; secret: string } }
-  return { factorId: body.id, qrSvg: body.totp.qr_code, secret: body.totp.secret }
+  // GoTrue's own totp.qr_code SVG only paints the QR modules -- the quiet
+  // zone required around the edge for scanners to detect it at all is left
+  // transparent, relying on the page background being plain white. Against
+  // this app's themed/dark-mode background that margin isn't white, which
+  // breaks scanning entirely (confirmed: neither Google nor Microsoft
+  // Authenticator could read it). Ignoring qr_code and rendering our own
+  // QR from the otpauth:// URI (see SettingsPage.tsx) sidesteps this.
+  const body = (await res.json()) as { id: string; totp: { uri: string; secret: string } }
+  return { factorId: body.id, uri: body.totp.uri, secret: body.totp.secret }
 }
 
 // Abandons an in-progress enrollment (user hit Cancel before confirming).

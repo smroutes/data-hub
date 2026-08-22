@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Loader2, ShieldCheck, ShieldOff, KeyRound } from "lucide-react"
+import QRCode from "qrcode"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -17,7 +18,7 @@ export function SettingsPage() {
   const { session, updateSession } = useAuth()
   const [step, setStep] = useState<Step>("loading")
   const [factor, setFactor] = useState<TotpFactor | null>(null)
-  const [qrSvg, setQrSvg] = useState("")
+  const [qrDataUrl, setQrDataUrl] = useState("")
   const [secret, setSecret] = useState("")
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
@@ -38,9 +39,19 @@ export function SettingsPage() {
     setBusy(true)
     setError("")
     try {
-      const { factorId, qrSvg: svg, secret: s } = await enrollTotp(session)
+      const { factorId, uri, secret: s } = await enrollTotp(session)
+      // Rendered client-side (not GoTrue's totp.qr_code SVG) so the quiet
+      // zone is a guaranteed opaque white, regardless of this page's own
+      // theme -- GoTrue's SVG leaves that margin transparent and relies on
+      // the page background being plain white, which broke scanning in
+      // dark mode.
+      const dataUrl = await QRCode.toDataURL(uri, {
+        width: 220,
+        margin: 2,
+        color: { dark: "#000000", light: "#ffffff" },
+      })
       setFactor({ id: factorId, status: "unverified" })
-      setQrSvg(svg)
+      setQrDataUrl(dataUrl)
       setSecret(s)
       setCode("")
       setStep("enrolling")
@@ -127,10 +138,9 @@ export function SettingsPage() {
 
             {step === "enrolling" && (
               <div className="flex flex-col items-center gap-4">
-                <div
-                  className="rounded-md border bg-card p-3 [&_svg]:size-44"
-                  dangerouslySetInnerHTML={{ __html: qrSvg }}
-                />
+                <div className="rounded-md border bg-white p-3">
+                  <img src={qrDataUrl} alt="Scan with your authenticator app" className="size-44" />
+                </div>
                 <p className="text-center text-xs text-muted-foreground">
                   Scan with your authenticator app, or enter this key manually:
                 </p>
