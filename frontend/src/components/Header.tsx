@@ -78,10 +78,10 @@ export function Header() {
               <NavigationMenuItem>
                 <NavigationMenuTrigger className={NAV_ITEM_CLASS}>Annapurna Scheme</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <ul className="grid w-64 gap-1 p-2">
+                  <ul className="grid w-64 gap-0.5 p-1">
                     {annapurnaItems.map((item) => (
                       <li key={item.to}>
-                        <NavigationMenuLink asChild>
+                        <NavigationMenuLink asChild className="px-2 py-1.5">
                           <Link to={item.to}>
                             <div className="font-medium">{item.label}</div>
                             <p className="text-muted-foreground">{item.description}</p>
