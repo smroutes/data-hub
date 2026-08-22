@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, Loader2, RefreshCw, Search } from "lucide-react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Button } from "@/components/ui/button"
@@ -185,6 +185,16 @@ export function ApplicationsTablePage() {
                   {total} {total === 1 ? "record" : "records"} found
                 </span>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refresh}
+                disabled={loading}
+                title="Reload records"
+              >
+                <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
+                Reload
+              </Button>
             </div>
 
             {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
