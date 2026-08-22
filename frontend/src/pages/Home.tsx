@@ -4,7 +4,6 @@ import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useAuth } from "@/lib/AuthContext"
-import { usernameFromSession } from "@/lib/auth"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import type { Page } from "@/lib/rbacApi"
 
@@ -25,8 +24,7 @@ const ONGOING_WORK: { title: string; description: string; to: string; page: Page
 
 export function Home() {
   useDocumentTitle("Home")
-  const { session, canVisit } = useAuth()
-  const username = session ? usernameFromSession(session) : ""
+  const { canVisit, displayName } = useAuth()
   const visibleWork = ONGOING_WORK.filter((w) => canVisit(w.page))
 
   return (
@@ -34,7 +32,7 @@ export function Home() {
       <Header />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Welcome{username && `, ${username}`} 👋
+          Welcome{displayName && `, ${displayName}`} 👋
         </h1>
 
         <h2 className="mt-8 text-lg font-semibold tracking-tight text-foreground">Ongoing Projects</h2>

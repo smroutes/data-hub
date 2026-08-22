@@ -17,8 +17,16 @@ interface AuthState {
   access: StaffAccess | null
   accessLoading: boolean
   isAdmin: boolean
+  // access.fullName when set, falling back to the username derived from
+  // the JWT -- everywhere in the UI that shows "who is this" should read
+  // this instead of calling usernameFromSession directly.
+  displayName: string
+  // True once a session and access are both confirmed loaded and no name
+  // is on file yet -- gates the non-closeable NameRequiredModal.
+  needsName: boolean
   canVisit: (page: Page) => boolean
   can: (page: Page, op: "read" | "write") => boolean
+  refreshAccess: () => Promise<void>
   signIn: (username: string, password: string, remember?: boolean) => Promise<void>
   signOut: () => Promise<void>
 }
@@ -68,6 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
+  const refreshAccess = useCallback(async () => {
+    if (!session) return
+    setAccess(await getMyAccess(session))
+  }, [session])
+
   // Reactive: a request came back 401 (expired/invalid JWT).
   useEffect(() => {
     return onSessionExpired(() => {
@@ -109,6 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session])
 
   const isAdmin = access?.isAdmin ?? false
+  const displayName = access?.fullName || (session ? auth.usernameFromSession(session) : "")
+  const needsName = Boolean(session && !accessLoading && access && !access.fullName)
 
   // Fails closed while access is still loading or unknown -- a page/action
   // only becomes available once permissions have actually been confirmed.
@@ -130,8 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         access,
         accessLoading,
         isAdmin,
+        displayName,
+        needsName,
         canVisit,
         can,
+        refreshAccess,
         signIn,
         signOut,
       }}

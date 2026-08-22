@@ -5,6 +5,7 @@ export type Page = "search" | "applications" | "citizens"
 
 export interface StaffAccess {
   isAdmin: boolean
+  fullName: string | null
   permissions: Record<Page, { read: boolean; write: boolean }>
 }
 
@@ -12,6 +13,7 @@ export interface StaffMember {
   id: string
   username: string
   is_admin: boolean
+  full_name: string | null
 }
 
 export interface PermissionRow {
@@ -63,7 +65,7 @@ const EMPTY_PERMISSIONS: StaffAccess["permissions"] = {
 export async function getMyAccess(session: Session): Promise<StaffAccess> {
   const id = userIdFromSession(session)
   const [staffRes, permsRes] = await Promise.all([
-    fetch(`${API_BASE}/rest/staff?id=eq.${id}&select=is_admin`, { headers: headers(session) }),
+    fetch(`${API_BASE}/rest/staff?id=eq.${id}&select=is_admin,full_name`, { headers: headers(session) }),
     fetch(`${API_BASE}/rest/permissions?user_id=eq.${id}&select=page,can_read,can_write`, {
       headers: headers(session),
     }),
@@ -71,13 +73,29 @@ export async function getMyAccess(session: Session): Promise<StaffAccess> {
   if (!staffRes.ok) throw new Error(await parseError(staffRes))
   if (!permsRes.ok) throw new Error(await parseError(permsRes))
 
-  const staffRows = (await staffRes.json()) as { is_admin: boolean }[]
+  const staffRows = (await staffRes.json()) as { is_admin: boolean; full_name: string | null }[]
   const permRows = (await permsRes.json()) as Omit<PermissionRow, "user_id">[]
 
   const permissions = { ...EMPTY_PERMISSIONS }
   for (const p of permRows) permissions[p.page] = { read: p.can_read, write: p.can_write }
 
-  return { isAdmin: staffRows[0]?.is_admin ?? false, permissions }
+  return {
+    isAdmin: staffRows[0]?.is_admin ?? false,
+    fullName: staffRows[0]?.full_name ?? null,
+    permissions,
+  }
+}
+
+// Sets the caller's own display name -- see set_my_name() in
+// db/postgres/init/06-staff-full-name.sql for why this is an RPC call
+// rather than a direct PATCH against public.staff.
+export async function setMyName(session: Session, name: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/rest/rpc/set_my_name`, {
+    method: "POST",
+    headers: headers(session),
+    body: JSON.stringify({ p_name: name }),
+  })
+  if (!res.ok) throw new Error(await parseError(res))
 }
 
 // Everything below is for the Admin page -- reads/writes are only actually
@@ -85,7 +103,7 @@ export async function getMyAccess(session: Session): Promise<StaffAccess> {
 // a PostgREST error for anyone else, same as any other protected endpoint.
 
 export async function listStaff(session: Session): Promise<StaffMember[]> {
-  const res = await fetch(`${API_BASE}/rest/staff?select=id,username,is_admin&order=username.asc`, {
+  const res = await fetch(`${API_BASE}/rest/staff?select=id,username,is_admin,full_name&order=username.asc`, {
     headers: headers(session),
   })
   if (!res.ok) throw new Error(await parseError(res))

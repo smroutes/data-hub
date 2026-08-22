@@ -16,7 +16,6 @@ import {
   NavigationMenuContent,
 } from "@/components/ui/navigation-menu"
 import { useAuth } from "@/lib/AuthContext"
-import { usernameFromSession } from "@/lib/auth"
 import type { Page } from "@/lib/rbacApi"
 
 // Search and Applications both belong to the Annapurna Scheme work, so
@@ -40,9 +39,8 @@ const ANNAPURNA_ITEMS: { to: string; label: string; description: string; page: P
 const NAV_ITEM_CLASS = "cursor-pointer rounded-md px-3 py-1.5 font-medium"
 
 export function Header() {
-  const { session, signOut, canVisit, isAdmin } = useAuth()
-  const username = session ? usernameFromSession(session) : ""
-  const initial = username ? username[0].toUpperCase() : "?"
+  const { signOut, canVisit, isAdmin, displayName } = useAuth()
+  const initial = displayName ? displayName[0].toUpperCase() : "?"
   const annapurnaItems = ANNAPURNA_ITEMS.filter((item) => canVisit(item.page))
 
   return (
@@ -114,7 +112,7 @@ export function Header() {
                 <span className="flex size-8 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground">
                   {initial}
                 </span>
-                <span className="text-sm font-medium text-foreground">{username}</span>
+                <span className="text-sm font-medium text-foreground">{displayName}</span>
                 <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
@@ -144,7 +142,7 @@ export function Header() {
                 <span className="flex size-7 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-foreground">
                   {initial}
                 </span>
-                <span className="text-sm font-medium text-foreground">{username}</span>
+                <span className="text-sm font-medium text-foreground">{displayName}</span>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>

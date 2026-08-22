@@ -7,6 +7,7 @@ import { AuthProvider } from "@/lib/AuthContext"
 import { ProtectedRoute } from "@/lib/ProtectedRoute"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import { SessionExpiredModal } from "@/components/SessionExpiredModal"
+import { NameRequiredModal } from "@/components/NameRequiredModal"
 import { Login } from "@/pages/Login"
 import { Home } from "@/pages/Home"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
@@ -32,6 +33,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <SessionExpiredModal />
+        <NameRequiredModal />
         <Routes>
           <Route
             path="/"

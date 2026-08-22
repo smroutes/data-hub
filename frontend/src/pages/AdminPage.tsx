@@ -193,6 +193,9 @@ export function AdminPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead rowSpan={2} className="align-bottom">
+                            Name
+                          </TableHead>
+                          <TableHead rowSpan={2} className="align-bottom">
                             Username
                           </TableHead>
                           <TableHead rowSpan={2} className="text-center align-bottom">
@@ -216,7 +219,8 @@ export function AdminPage() {
                       <TableBody>
                         {staff.map((member) => (
                           <TableRow key={member.id}>
-                            <TableCell className="font-medium">{member.username}</TableCell>
+                            <TableCell className="font-medium">{member.full_name || "—"}</TableCell>
+                            <TableCell className="text-muted-foreground">{member.username}</TableCell>
                             <TableCell className="text-center">
                               <Checkbox
                                 checked={member.is_admin}
