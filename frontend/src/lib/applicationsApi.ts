@@ -27,6 +27,17 @@ export interface Application {
   updated_at: string
 }
 
+// `created_at` is stable from the very first time a row entered the system
+// (bulk CSV import, for most rows) -- it's the right date for a
+// newly_submitted row, but wrong for a re_submitted one, where the thing
+// that actually happened recently is the resubmission itself. Use
+// `updated_at` in that case instead.
+export function effectiveSubmissionDate(application: Application): string {
+  return application.submission_flag === "re_submitted"
+    ? application.updated_at
+    : application.created_at
+}
+
 export type ApplicationInput = Partial<
   Pick<
     Application,

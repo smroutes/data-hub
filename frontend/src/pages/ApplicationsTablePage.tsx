@@ -11,7 +11,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { SubmissionFlagBadge } from "@/components/SubmissionFlagBadge"
 import { ApplicationDetailsModal } from "@/components/ApplicationDetailsModal"
 import { useAuth } from "@/lib/AuthContext"
-import { listFlaggedApplications } from "@/lib/applicationsApi"
+import { effectiveSubmissionDate, listFlaggedApplications } from "@/lib/applicationsApi"
 import type { Application } from "@/lib/applicationsApi"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 
@@ -136,7 +136,8 @@ export function ApplicationsTablePage() {
       cell: ({ getValue }) => (getValue() as string) || "—",
     },
     {
-      accessorKey: "created_at",
+      id: "date",
+      accessorFn: (row) => effectiveSubmissionDate(row),
       header: sortableHeader("Date"),
       cell: ({ getValue }) => formatDate(getValue() as string),
     },

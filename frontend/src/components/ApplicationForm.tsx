@@ -28,7 +28,6 @@ export function ApplicationForm({
     application_number: initial?.application_number ?? "",
     mobile_number: initial?.mobile_number ?? "",
     aadhaar_number: initial?.aadhaar_number ?? "",
-    district: initial?.district ?? "",
     block: initial?.block ?? "",
     address: initial?.address ?? "",
     voter_number: initial?.voter_number ?? "",
@@ -75,9 +74,14 @@ export function ApplicationForm({
       return
     }
 
-    const trimmed: ApplicationInput = Object.fromEntries(
-      Object.entries(values).map(([k, v]) => [k, typeof v === "string" ? v.trim() || null : v])
-    )
+    const trimmed: ApplicationInput = {
+      ...Object.fromEntries(
+        Object.entries(values).map(([k, v]) => [k, typeof v === "string" ? v.trim() || null : v])
+      ),
+      // District is hidden from the form -- always clear it rather than
+      // silently keeping whatever was there before (e.g. from the CSV sync).
+      district: null,
+    }
 
     setSaving(true)
     try {
@@ -113,19 +117,22 @@ export function ApplicationForm({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              Relative Name (Father/Husband)
-            </label>
-            <Input
-              value={values.relative_name ?? ""}
-              onChange={(e) => set("relative_name", e.target.value)}
-              aria-invalid={!!errors.relative_name}
-            />
-            {errors.relative_name && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.relative_name}
-              </p>
-            )}
+            <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
+            <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
+              <option value="">Select a block</option>
+              {values.block && !KNOWN_BLOCKS.has(values.block) && (
+                <option value={values.block}>{values.block}</option>
+              )}
+              {BLOCK_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.blocks.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
           </div>
 
           <div>
@@ -157,6 +164,20 @@ export function ApplicationForm({
             )}
           </div>
 
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Full Address <span className="text-red-600 dark:text-red-400">*</span>
+            </label>
+            <Textarea
+              value={values.address ?? ""}
+              onChange={(e) => set("address", e.target.value)}
+              aria-invalid={!!errors.address}
+            />
+            {errors.address && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
+            )}
+          </div>
+
           <div>
             <label className="mb-1 block text-sm font-medium text-foreground">
               Aadhaar Number
@@ -175,50 +196,28 @@ export function ApplicationForm({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">District</label>
-            <Input value={values.district ?? ""} onChange={(e) => set("district", e.target.value)} />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
-            <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
-              <option value="">Select a block</option>
-              {values.block && !KNOWN_BLOCKS.has(values.block) && (
-                <option value={values.block}>{values.block}</option>
-              )}
-              {BLOCK_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.blocks.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </Select>
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              Full Address <span className="text-red-600 dark:text-red-400">*</span>
-            </label>
-            <Textarea
-              value={values.address ?? ""}
-              onChange={(e) => set("address", e.target.value)}
-              aria-invalid={!!errors.address}
-            />
-            {errors.address && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
-            )}
-          </div>
-
-          <div>
             <label className="mb-1 block text-sm font-medium text-foreground">Voter Number</label>
             <Input
               value={values.voter_number ?? ""}
               onChange={(e) => set("voter_number", e.target.value)}
               placeholder="Voter Card / EPIC number"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Relative Name (Father/Husband)
+            </label>
+            <Input
+              value={values.relative_name ?? ""}
+              onChange={(e) => set("relative_name", e.target.value)}
+              aria-invalid={!!errors.relative_name}
+            />
+            {errors.relative_name && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.relative_name}
+              </p>
+            )}
           </div>
 
           <div>

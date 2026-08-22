@@ -1,3 +1,4 @@
+import { effectiveSubmissionDate } from "@/lib/applicationsApi"
 import type { Application } from "@/lib/applicationsApi"
 
 const BLANK = "________"
@@ -7,10 +8,11 @@ function filled(value: string | null | undefined): string {
   return trimmed || BLANK
 }
 
-// The application's own submission date -- kept stable across re-prints,
-// rather than always showing "today".
+// The application's own submission date -- kept stable across re-prints
+// (not always "today"), and reflects the actual resubmission date for
+// re_submitted rows rather than the original bulk-import created_at.
 function submissionDate(application: Application): string {
-  const d = new Date(application.created_at)
+  const d = new Date(effectiveSubmissionDate(application))
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
