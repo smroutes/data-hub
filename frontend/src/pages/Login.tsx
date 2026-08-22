@@ -240,7 +240,10 @@ export function Login() {
                 </div>
               </div>
 
-              {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+              {/* Always mounted (not conditionally rendered) so the card's
+                  height -- and the vertically-centered layout around it --
+                  doesn't jump when an error appears/disappears. */}
+              <p className="min-h-5 text-sm text-red-600 dark:text-red-400">{error}</p>
 
               <Button type="submit" disabled={loading}>
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
@@ -307,7 +310,10 @@ export function Login() {
               Remember me
             </label>
 
-            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            {/* Always mounted (not conditionally rendered) so the card's
+                height -- and the vertically-centered layout around it --
+                doesn't jump when an error appears/disappears. */}
+            <p className="min-h-5 text-sm text-red-600 dark:text-red-400">{error}</p>
 
             <Button type="submit" disabled={loading}>
               {loading ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
