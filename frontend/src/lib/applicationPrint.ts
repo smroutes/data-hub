@@ -65,7 +65,7 @@ function buildLetterHtml(application: Application): string {
 <body>
   <p>To</p>
   <p>The B.D.O.</p>
-  <p style="margin-bottom: 14pt;">${escapeHtml(block)}</p>
+  <p style="margin-bottom: 14pt;">${escapeHtml(block)} Block</p>
 
   <p class="bold" style="margin-bottom: 14pt;">Subject: অন্নপূর্ণা যোজনার Beneficiary List-এ নাম অন্তর্ভুক্ত করার বিষয়ে আবেদন।</p>
 
@@ -89,8 +89,8 @@ function buildLetterHtml(application: Application): string {
   ${field("Aadhaar No.:", filled(application.aadhaar_number))}
   ${field("Voter Card / EPIC:", filled(application.voter_number))}
   ${field("Mobile No.:", filled(application.mobile_number))}
-  ${field("Date:", submissionDate(application))}
-  <p class="field" style="margin-bottom: 20pt;"><span class="bold">Remarks:</span> ${escapeHtml(filled(application.remarks))}</p>
+  ${field("Remarks:", filled(application.remarks))}
+  <p class="field" style="margin-bottom: 20pt;"><span class="bold">Date:</span> ${escapeHtml(submissionDate(application))}</p>
 
   <p style="text-align: right;">ধন্যবাদান্তে,</p>
   <p style="text-align: right; margin-top: 28pt;">___________________________</p>
