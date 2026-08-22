@@ -29,8 +29,8 @@ export function ApplicationFormModal({
       submission_flag: isEdit ? "re_submitted" : "newly_submitted",
     }
     const saved = isEdit
-      ? await updateApplication(session, application.id, payload)
-      : await createApplication(session, payload)
+      ? await updateApplication(session, application.id, payload, "search")
+      : await createApplication(session, payload, "search")
     onOpenChange(false)
     onSaved?.(saved)
     if (print) printApplication(saved)

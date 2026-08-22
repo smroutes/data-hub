@@ -9,17 +9,19 @@ import {
 import { useAuth } from "@/lib/AuthContext"
 import { usernameFromSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
+import type { Page } from "@/lib/rbacApi"
 
-const NAV_ITEMS = [
-  { to: "/as/search", label: "Search" },
-  { to: "/as/applications", label: "Applications" },
+const NAV_ITEMS: { to: string; label: string; page: Page }[] = [
+  { to: "/as/search", label: "Search", page: "search" },
+  { to: "/as/applications", label: "Applications", page: "applications" },
 ]
 
 export function Header() {
-  const { session, signOut } = useAuth()
+  const { session, signOut, canVisit, isAdmin } = useAuth()
   const location = useLocation()
   const username = session ? usernameFromSession(session) : ""
   const initial = username ? username[0].toUpperCase() : "?"
+  const navItems = NAV_ITEMS.filter((item) => canVisit(item.page))
 
   return (
     <header className="sticky top-0 z-20 border-b bg-card">
@@ -44,7 +46,7 @@ export function Header() {
         </div>
 
         <nav className="flex items-center gap-1 justify-self-center">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = location.pathname === item.to
             return (
               <Link
@@ -61,6 +63,19 @@ export function Header() {
               </Link>
             )
           })}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                location.pathname === "/admin"
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Admin
+            </Link>
+          )}
         </nav>
 
         <div className="justify-self-end">

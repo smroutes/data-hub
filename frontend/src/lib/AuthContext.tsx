@@ -3,6 +3,8 @@ import type { ReactNode } from "react"
 import * as auth from "@/lib/auth"
 import type { Session } from "@/lib/auth"
 import { onSessionExpired } from "@/lib/sessionExpiry"
+import { getMyAccess } from "@/lib/rbacApi"
+import type { Page, StaffAccess } from "@/lib/rbacApi"
 
 interface AuthState {
   session: Session | null
@@ -12,6 +14,11 @@ interface AuthState {
   // signing out, since the UI shows a blocking modal rather than silently
   // dropping to the login page.
   expired: boolean
+  access: StaffAccess | null
+  accessLoading: boolean
+  isAdmin: boolean
+  canVisit: (page: Page) => boolean
+  can: (page: Page, op: "read" | "write") => boolean
   signIn: (username: string, password: string, remember?: boolean) => Promise<void>
   signOut: () => Promise<void>
 }
@@ -27,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [expired, setExpired] = useState(false)
+  const [access, setAccess] = useState<StaffAccess | null>(null)
+  const [accessLoading, setAccessLoading] = useState(false)
 
   useEffect(() => {
     auth.getValidSession().then((s) => {
@@ -34,6 +43,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
   }, [])
+
+  // Keyed on the user id (stable across token refreshes), not the session
+  // object itself, so a routine access-token refresh doesn't re-trigger a
+  // permissions fetch.
+  const userId = session ? auth.userIdFromSession(session) : ""
+  useEffect(() => {
+    if (!session) {
+      setAccess(null)
+      return
+    }
+    setAccessLoading(true)
+    getMyAccess(session)
+      .then(setAccess)
+      .catch(() => setAccess(null))
+      .finally(() => setAccessLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   // Reactive: a request came back 401 (expired/invalid JWT).
   useEffect(() => {
@@ -75,8 +101,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setExpired(false)
   }, [session])
 
+  const isAdmin = access?.isAdmin ?? false
+
+  // Fails closed while access is still loading or unknown -- a page/action
+  // only becomes available once permissions have actually been confirmed.
+  const canVisit = useCallback(
+    (page: Page) => isAdmin || Boolean(access?.permissions[page]?.read || access?.permissions[page]?.write),
+    [isAdmin, access]
+  )
+  const can = useCallback(
+    (page: Page, op: "read" | "write") => isAdmin || Boolean(access?.permissions[page]?.[op]),
+    [isAdmin, access]
+  )
+
   return (
-    <AuthContext.Provider value={{ session, loading, expired, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        loading,
+        expired,
+        access,
+        accessLoading,
+        isAdmin,
+        canVisit,
+        can,
+        signIn,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

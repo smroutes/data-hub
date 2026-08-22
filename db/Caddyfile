@@ -3,7 +3,7 @@
 	handle @preflight {
 		header Access-Control-Allow-Origin "{$CORS_ALLOWED_ORIGIN}"
 		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-		header Access-Control-Allow-Headers "authorization, content-type, prefer, range"
+		header Access-Control-Allow-Headers "authorization, content-type, prefer, range, x-page"
 		header Access-Control-Max-Age "3600"
 		respond 204
 	}

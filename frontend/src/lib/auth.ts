@@ -28,6 +28,13 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   return JSON.parse(json)
 }
 
+// The GoTrue user id (JWT `sub` claim) -- used to look up this user's own
+// rows in public.staff/public.permissions (see rbacApi.ts).
+export function userIdFromSession(session: Session): string {
+  const payload = decodeJwtPayload(session.access_token)
+  return typeof payload.sub === "string" ? payload.sub : ""
+}
+
 export function usernameFromSession(session: Session): string {
   const payload = decodeJwtPayload(session.access_token)
   const email = typeof payload.email === "string" ? payload.email : ""

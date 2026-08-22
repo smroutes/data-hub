@@ -62,8 +62,9 @@ export function SearchPage({ dataset }: { dataset: Dataset }) {
   const [noResults, setNoResults] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [formTarget, setFormTarget] = useState<Application | null>(null)
-  const { session } = useAuth()
+  const { session, can } = useAuth()
   const isAnnapurna = dataset.id === "annapurna"
+  const canWriteAnnapurna = can("search", "write")
 
   async function runSearch() {
     const hasValue = Object.values(values).some((v) => v.trim())
@@ -167,15 +168,17 @@ export function SearchPage({ dataset }: { dataset: Dataset }) {
               <p className="text-base text-foreground">
                 No matching record found for this search.
               </p>
-              <Button
-                onClick={() => {
-                  setFormTarget(null)
-                  setFormOpen(true)
-                }}
-              >
-                <Plus className="size-4" />
-                Add New Application
-              </Button>
+              {canWriteAnnapurna && (
+                <Button
+                  onClick={() => {
+                    setFormTarget(null)
+                    setFormOpen(true)
+                  }}
+                >
+                  <Plus className="size-4" />
+                  Add New Application
+                </Button>
+              )}
             </div>
           )}
 
@@ -197,7 +200,7 @@ export function SearchPage({ dataset }: { dataset: Dataset }) {
                           <TableCell key={col}>
                             <button
                               onClick={() => {
-                                if (isAnnapurna) {
+                                if (isAnnapurna && canWriteAnnapurna) {
                                   setFormTarget(row as unknown as Application)
                                   setFormOpen(true)
                                 } else {

@@ -10,6 +10,7 @@ import { SessionExpiredModal } from "@/components/SessionExpiredModal"
 import { Login } from "@/pages/Login"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
 import { ApplicationsTablePage } from "@/pages/ApplicationsTablePage"
+import { AdminPage } from "@/pages/AdminPage"
 import { NotFound } from "@/pages/NotFound"
 
 function Search() {
@@ -36,7 +37,7 @@ function App() {
           <Route
             path="/as/search"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute page="search">
                 <Search />
               </ProtectedRoute>
             }
@@ -44,7 +45,7 @@ function App() {
           <Route
             path="/as/applications"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute page="applications">
                 <ApplicationsTablePage />
               </ProtectedRoute>
             }
@@ -52,8 +53,16 @@ function App() {
           <Route
             path="/citizens"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute page="citizens">
                 <CitizensDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPage />
               </ProtectedRoute>
             }
           />
