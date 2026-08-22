@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { ClipboardList } from "lucide-react"
+import { ArrowRight, ClipboardList } from "lucide-react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -13,11 +13,12 @@ import type { Page } from "@/lib/rbacApi"
 // yet. Each entry links to that work's actual entry-point page -- Annapurna
 // Scheme's is Search, not Applications, since that's where staff start
 // (new/lookup) before ending up on a specific application.
-const ONGOING_WORK: { title: string; description: string; to: string; page: Page }[] = [
+const ONGOING_WORK: { title: string; description: string; to: string; entryLabel: string; page: Page }[] = [
   {
     title: "Annapurna Scheme",
     description: "Search, add, and manage Annapurna Scheme applications.",
     to: "/as/search",
+    entryLabel: "Search",
     page: "search",
   },
 ]
@@ -50,15 +51,22 @@ export function Home() {
           ) : (
             visibleWork.map((w) => (
               <Link key={w.to} to={w.to}>
-                <Card className="h-full transition-colors hover:border-brand/50 hover:bg-accent/40">
+                <Card className="group h-full transition-colors hover:border-brand/50 hover:bg-accent/40">
                   <CardHeader>
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent">
-                        <ClipboardList className="size-4.5 text-accent-foreground" />
-                      </span>
-                      <CardTitle className="text-lg">{w.title}</CardTitle>
+                    <div className="flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent">
+                          <ClipboardList className="size-4.5 text-accent-foreground" />
+                        </span>
+                        <CardTitle className="text-lg">{w.title}</CardTitle>
+                      </div>
+                      <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-brand" />
                     </div>
                     <CardDescription className="mt-1.5">{w.description}</CardDescription>
+                    <p className="mt-2 flex items-center gap-1 text-sm font-medium text-brand">
+                      Go to {w.entryLabel}
+                      <ArrowRight className="size-3.5" />
+                    </p>
                   </CardHeader>
                 </Card>
               </Link>
