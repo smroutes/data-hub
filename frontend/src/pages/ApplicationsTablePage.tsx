@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronLeft, ChevronRight, Loader2, RefreshCw, Search } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, FilterX, Loader2, RefreshCw, Search } from "lucide-react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Button } from "@/components/ui/button"
@@ -74,6 +74,14 @@ export function ApplicationsTablePage() {
     setDate(value)
   }
 
+  function clearFilters() {
+    setPage(0)
+    setSearch("")
+    setQuery("")
+    setFlag("")
+    setDate("")
+  }
+
   function refresh() {
     if (!session) return
     setLoading(true)
@@ -94,7 +102,7 @@ export function ApplicationsTablePage() {
 
   useEffect(refresh, [session, page, query, flag, date])
 
-  const hasFilters = Boolean(query || flag || date)
+  const hasFilters = Boolean(search || query || flag || date)
 
   const from = total === 0 ? 0 : page * PAGE_SIZE + 1
   const to = Math.min((page + 1) * PAGE_SIZE, total)
@@ -155,15 +163,22 @@ export function ApplicationsTablePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-3 flex flex-wrap items-center gap-3">
-              <div className="relative max-w-sm flex-1">
-                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name, application number, mobile"
-                  className="pl-8"
-                />
+            <div className="mb-3 flex flex-wrap items-start gap-3">
+              <div className="max-w-sm flex-1">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name, application number, mobile"
+                    className="pl-8"
+                  />
+                </div>
+                {!loading && !error && (
+                  <p className="mt-1 pl-0.5 text-sm text-muted-foreground">
+                    {total} {total === 1 ? "record" : "records"} found
+                  </p>
+                )}
               </div>
               <Select
                 value={flag}
@@ -180,14 +195,18 @@ export function ApplicationsTablePage() {
                 onChange={(e) => setDateFilter(e.target.value)}
                 className="w-auto"
               />
-              {!loading && !error && (
-                <span className="text-sm whitespace-nowrap text-muted-foreground">
-                  {total} {total === 1 ? "record" : "records"} found
-                </span>
+              {hasFilters && (
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                  title="Clear all filters and search"
+                >
+                  <FilterX className="size-3.5" />
+                  Clear
+                </Button>
               )}
               <Button
                 variant="outline"
-                size="sm"
                 onClick={refresh}
                 disabled={loading}
                 title="Reload records"
