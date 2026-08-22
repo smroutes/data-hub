@@ -242,8 +242,10 @@ export function Login() {
 
               {/* Always mounted (not conditionally rendered) so the card's
                   height -- and the vertically-centered layout around it --
-                  doesn't jump when an error appears/disappears. */}
-              <p className="min-h-5 text-sm text-red-600 dark:text-red-400">{error}</p>
+                  doesn't jump when an error appears/disappears. -mt-4
+                  cancels the flex gap above so this slot doesn't ALSO add a
+                  gap on top of its own reserved height when empty. */}
+              <p className="-mt-4 min-h-5 text-sm text-red-600 dark:text-red-400">{error}</p>
 
               <Button type="submit" disabled={loading}>
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
@@ -312,8 +314,11 @@ export function Login() {
 
             {/* Always mounted (not conditionally rendered) so the card's
                 height -- and the vertically-centered layout around it --
-                doesn't jump when an error appears/disappears. */}
-            <p className="min-h-5 text-sm text-red-600 dark:text-red-400">{error}</p>
+                doesn't jump when an error appears/disappears. -mt-4 cancels
+                the flex gap above so this slot doesn't ALSO add a gap on
+                top of its own reserved height when empty -- otherwise the
+                no-error state gets an oversized, dead-looking space here. */}
+            <p className="-mt-4 min-h-5 text-sm text-red-600 dark:text-red-400">{error}</p>
 
             <Button type="submit" disabled={loading}>
               {loading ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
