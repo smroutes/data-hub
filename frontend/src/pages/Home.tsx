@@ -36,9 +36,11 @@ export function Home() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Welcome{username && `, ${username}`} 👋
         </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">Here's what's currently ongoing.</p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <h2 className="mt-8 text-lg font-semibold tracking-tight text-foreground">Ongoing Projects</h2>
+        <p className="mt-1 text-sm text-muted-foreground">What's currently active for you to jump into.</p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {visibleWork.length === 0 ? (
             <Card>
               <CardHeader>
