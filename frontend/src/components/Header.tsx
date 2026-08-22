@@ -21,22 +21,22 @@ import type { Page } from "@/lib/rbacApi"
 // Search and Applications both belong to the Annapurna Scheme work, so
 // they're grouped under one nav dropdown instead of two flat top-level
 // links -- each sub-item is still individually permission-gated.
-const ANNAPURNA_ITEMS: { to: string; label: string; page: Page }[] = [
-  { to: "/as/search", label: "Search", page: "search" },
-  { to: "/as/applications", label: "Applications", page: "applications" },
+const ANNAPURNA_ITEMS: { to: string; label: string; description: string; page: Page }[] = [
+  {
+    to: "/as/search",
+    label: "Search",
+    description: "Look up records and add new applications.",
+    page: "search",
+  },
+  {
+    to: "/as/applications",
+    label: "Applications",
+    description: "Browse newly submitted and re-submitted applications.",
+    page: "applications",
+  },
 ]
 
-// Our --accent token is the brand's saffron tint (used deliberately
-// elsewhere -- badges, the user-avatar circle, etc.), but shadcn's
-// NavigationMenu bakes bg-accent/text-accent-foreground into its own
-// hover/open-state defaults, which reads as a loud color flood here
-// instead of the subtle neutral highlight shadcn's own docs show. Override
-// just those states to neutral bg-muted, without touching --accent itself.
-const NAV_ITEM_CLASS =
-  "cursor-pointer rounded-md px-3 py-1.5 font-medium " +
-  "hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground " +
-  "data-[state=open]:bg-muted data-[state=open]:text-foreground " +
-  "data-[state=open]:hover:bg-muted data-[state=open]:focus:bg-muted"
+const NAV_ITEM_CLASS = "cursor-pointer rounded-md px-3 py-1.5 font-medium"
 
 export function Header() {
   const { session, signOut, canVisit, isAdmin } = useAuth()
@@ -66,7 +66,7 @@ export function Header() {
           </div>
         </div>
 
-        <NavigationMenu viewport={false} className="max-w-none justify-self-center">
+        <NavigationMenu className="max-w-none justify-self-center">
           <NavigationMenuList className="gap-1">
             <NavigationMenuItem>
               <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
@@ -78,11 +78,14 @@ export function Header() {
               <NavigationMenuItem>
                 <NavigationMenuTrigger className={NAV_ITEM_CLASS}>Annapurna Scheme</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <ul className="grid w-44 gap-1 p-1.5">
+                  <ul className="grid w-64 gap-1 p-2">
                     {annapurnaItems.map((item) => (
                       <li key={item.to}>
-                        <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
-                          <Link to={item.to}>{item.label}</Link>
+                        <NavigationMenuLink asChild>
+                          <Link to={item.to}>
+                            <div className="font-medium">{item.label}</div>
+                            <p className="text-muted-foreground">{item.description}</p>
+                          </Link>
                         </NavigationMenuLink>
                       </li>
                     ))}
