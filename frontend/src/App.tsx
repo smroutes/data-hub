@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { Header } from "@/components/Header"
 import { SearchPage } from "@/components/SearchPage"
 import { Footer } from "@/components/Footer"
@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/lib/ProtectedRoute"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import { SessionExpiredModal } from "@/components/SessionExpiredModal"
 import { Login } from "@/pages/Login"
+import { Home } from "@/pages/Home"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
 import { ApplicationsTablePage } from "@/pages/ApplicationsTablePage"
 import { AdminPage } from "@/pages/AdminPage"
@@ -32,7 +33,14 @@ function App() {
       <AuthProvider>
         <SessionExpiredModal />
         <Routes>
-          <Route path="/" element={<Navigate to="/as/search" replace />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login" element={<Login />} />
           <Route
             path="/as/search"

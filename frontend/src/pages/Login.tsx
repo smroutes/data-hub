@@ -77,7 +77,10 @@ export function Login() {
     }
   }, [quoteIndex])
 
-  const from = (location.state as { from?: string } | null)?.from ?? "/as/search"
+  // No specific page requested (e.g. a fresh login, not bounced here from a
+  // protected route) -- land on "/", which picks the first page this user
+  // actually has access to instead of assuming Search.
+  const from = (location.state as { from?: string } | null)?.from ?? "/"
   if (session) return <Navigate to={from} replace />
 
   async function handleSubmit(e: FormEvent) {

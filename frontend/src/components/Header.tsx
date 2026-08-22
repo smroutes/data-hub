@@ -11,13 +11,18 @@ import {
   NavigationMenuList,
   NavigationMenuItem,
   NavigationMenuLink,
+  NavigationMenuTrigger,
+  NavigationMenuContent,
 } from "@/components/ui/navigation-menu"
 import { useAuth } from "@/lib/AuthContext"
 import { usernameFromSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import type { Page } from "@/lib/rbacApi"
 
-const NAV_ITEMS: { to: string; label: string; page: Page }[] = [
+// Search and Applications both belong to the Annapurna Scheme work, so
+// they're grouped under one nav dropdown instead of two flat top-level
+// links -- each sub-item is still individually permission-gated.
+const ANNAPURNA_ITEMS: { to: string; label: string; page: Page }[] = [
   { to: "/as/search", label: "Search", page: "search" },
   { to: "/as/applications", label: "Applications", page: "applications" },
 ]
@@ -27,7 +32,8 @@ export function Header() {
   const location = useLocation()
   const username = session ? usernameFromSession(session) : ""
   const initial = username ? username[0].toUpperCase() : "?"
-  const navItems = NAV_ITEMS.filter((item) => canVisit(item.page))
+  const annapurnaItems = ANNAPURNA_ITEMS.filter((item) => canVisit(item.page))
+  const isAnnapurnaActive = annapurnaItems.some((item) => location.pathname === item.to)
 
   return (
     <header className="sticky top-0 z-20 border-b bg-card">
@@ -53,23 +59,53 @@ export function Header() {
 
         <NavigationMenu viewport={false} className="max-w-none justify-self-center">
           <NavigationMenuList className="gap-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.to
-              return (
-                <NavigationMenuItem key={item.to}>
-                  <NavigationMenuLink
-                    asChild
-                    active={isActive}
-                    className={cn(
-                      "rounded-md px-3 py-1.5 font-medium",
-                      isActive && "bg-accent text-accent-foreground"
-                    )}
-                  >
-                    <Link to={item.to}>{item.label}</Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-              )
-            })}
+            <NavigationMenuItem>
+              <NavigationMenuLink
+                asChild
+                active={location.pathname === "/"}
+                className={cn(
+                  "rounded-md px-3 py-1.5 font-medium",
+                  location.pathname === "/" && "bg-accent text-accent-foreground"
+                )}
+              >
+                <Link to="/">Home</Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+
+            {annapurnaItems.length > 0 && (
+              <NavigationMenuItem>
+                <NavigationMenuTrigger
+                  className={cn(
+                    "rounded-md px-3 py-1.5 font-medium",
+                    isAnnapurnaActive && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  Annapurna Scheme
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="grid w-44 gap-1 p-1.5">
+                    {annapurnaItems.map((item) => {
+                      const isActive = location.pathname === item.to
+                      return (
+                        <li key={item.to}>
+                          <NavigationMenuLink
+                            asChild
+                            active={isActive}
+                            className={cn(
+                              "rounded-md px-3 py-1.5 font-medium",
+                              isActive && "bg-accent text-accent-foreground"
+                            )}
+                          >
+                            <Link to={item.to}>{item.label}</Link>
+                          </NavigationMenuLink>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            )}
+
             {isAdmin && (
               <NavigationMenuItem>
                 <NavigationMenuLink
