@@ -124,6 +124,9 @@ export function Header() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to="/settings">Settings</Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => signOut()}>
                 <LogOut className="size-3.5" />
                 Sign out
@@ -175,6 +178,9 @@ export function Header() {
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/settings">Settings</Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => signOut()}>
                 <LogOut className="size-3.5" />
                 Sign out

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import * as auth from "@/lib/auth"
-import type { Session } from "@/lib/auth"
+import type { LoginResult, Session } from "@/lib/auth"
 import { onSessionExpired } from "@/lib/sessionExpiry"
 import { getMyAccess } from "@/lib/rbacApi"
 import type { Page, StaffAccess } from "@/lib/rbacApi"
@@ -27,7 +27,19 @@ interface AuthState {
   canVisit: (page: Page) => boolean
   can: (page: Page, op: "read" | "write") => boolean
   refreshAccess: () => Promise<void>
-  signIn: (username: string, password: string, remember?: boolean) => Promise<void>
+  signIn: (username: string, password: string, remember?: boolean) => Promise<LoginResult>
+  // Completes a login that stopped at the TOTP step (signIn resolved with
+  // mfaRequired: true).
+  completeMfaSignIn: (
+    pendingAccessToken: string,
+    factorId: string,
+    code: string,
+    remember?: boolean
+  ) => Promise<void>
+  // Pushes a session straight into context without going through signIn --
+  // needed by the Settings page, since enrolling/disabling TOTP both rotate
+  // tokens via GoTrue's verify endpoint.
+  updateSession: (session: Session) => void
   signOut: () => Promise<void>
 }
 
@@ -110,9 +122,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = useCallback(async (username: string, password: string, remember = true) => {
-    const s = await auth.login(username, password, remember)
+    const result = await auth.login(username, password, remember)
+    if (!result.mfaRequired) {
+      setSession(result.session)
+      setExpired(false)
+    }
+    // mfaRequired: true -- deliberately not touching session state here.
+    // The caller (Login.tsx) shows a code-entry step instead; nothing is
+    // considered "signed in" until completeMfaSignIn succeeds.
+    return result
+  }, [])
+
+  const completeMfaSignIn = useCallback(
+    async (pendingAccessToken: string, factorId: string, code: string, remember = true) => {
+      const { challengeId } = await auth.mfaChallenge(pendingAccessToken, factorId)
+      const body = await auth.mfaVerify(pendingAccessToken, factorId, challengeId, code)
+      const s = auth.saveSession(body, remember ? localStorage : sessionStorage)
+      setSession(s)
+      setExpired(false)
+    },
+    []
+  )
+
+  const updateSession = useCallback((s: Session) => {
+    // Keep whichever storage currently holds a session in sync (same
+    // local-vs-session-storage choice made at login).
+    const storage = localStorage.getItem(auth.STORAGE_KEY) ? localStorage : sessionStorage
+    storage.setItem(auth.STORAGE_KEY, JSON.stringify(s))
     setSession(s)
-    setExpired(false)
   }, [])
 
   const signOut = useCallback(async () => {
@@ -151,6 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         can,
         refreshAccess,
         signIn,
+        completeMfaSignIn,
+        updateSession,
         signOut,
       }}
     >

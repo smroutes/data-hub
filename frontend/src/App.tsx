@@ -13,6 +13,7 @@ import { Home } from "@/pages/Home"
 import { CitizensDashboard } from "@/pages/CitizensDashboard"
 import { ApplicationsTablePage } from "@/pages/ApplicationsTablePage"
 import { AdminPage } from "@/pages/AdminPage"
+import { SettingsPage } from "@/pages/SettingsPage"
 import { NotFound } from "@/pages/NotFound"
 
 function Search() {
@@ -73,6 +74,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />
