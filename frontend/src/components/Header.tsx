@@ -41,7 +41,7 @@ const NAV_ITEM_CLASS = "cursor-pointer rounded-md px-3 py-1.5 font-medium"
 // Deterministic per-account avatar -- same seed always renders the same
 // image, no upload/storage needed. https://www.dicebear.com/styles/planets/
 function avatarUrl(seed: string): string {
-  return `https://api.dicebear.com/9.x/planets/svg?seed=${encodeURIComponent(seed)}`
+  return `https://api.dicebear.com/10.x/planets/svg?seed=${encodeURIComponent(seed)}`
 }
 
 export function Header() {
