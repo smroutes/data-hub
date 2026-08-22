@@ -5,6 +5,7 @@ import {
   Database,
   Eye,
   EyeOff,
+  KeyRound,
   Loader2,
   Lock,
   LogIn,
@@ -14,6 +15,7 @@ import {
 import { useAuth } from "@/lib/AuthContext"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import loginOffice from "@/assets/login-office.jpg"
@@ -42,7 +44,7 @@ const HOLD_AFTER_TYPE_MS = 2800
 
 export function Login() {
   useDocumentTitle("Sign In")
-  const { session, signIn } = useAuth()
+  const { session, signIn, completeMfaSignIn } = useAuth()
   const location = useLocation()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -50,6 +52,10 @@ export function Login() {
   const [remember, setRemember] = useState(true)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  // Set only when signIn() reports the account has TOTP enabled -- switches
+  // the form below to a code-entry step instead of completing login.
+  const [mfa, setMfa] = useState<{ factorId: string; pendingAccessToken: string } | null>(null)
+  const [code, setCode] = useState("")
   const [quoteIndex, setQuoteIndex] = useState(0)
   const [typedText, setTypedText] = useState("")
 
@@ -76,7 +82,10 @@ export function Login() {
     }
   }, [quoteIndex])
 
-  const from = (location.state as { from?: string } | null)?.from ?? "/as/search"
+  // No specific page requested (e.g. a fresh login, not bounced here from a
+  // protected route) -- land on "/", which picks the first page this user
+  // actually has access to instead of assuming Search.
+  const from = (location.state as { from?: string } | null)?.from ?? "/"
   if (session) return <Navigate to={from} replace />
 
   async function handleSubmit(e: FormEvent) {
@@ -88,9 +97,29 @@ export function Login() {
     setLoading(true)
     setError("")
     try {
-      await signIn(username, password, remember)
+      const result = await signIn(username, password, remember)
+      if (result.mfaRequired) {
+        setMfa({ factorId: result.factorId, pendingAccessToken: result.pendingAccessToken })
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleVerifyMfa(e: FormEvent) {
+    e.preventDefault()
+    if (!mfa || !code.trim()) {
+      setError("Enter the code from your authenticator app.")
+      return
+    }
+    setLoading(true)
+    setError("")
+    try {
+      await completeMfaSignIn(mfa.pendingAccessToken, mfa.factorId, code.trim(), remember)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid code -- try again.")
     } finally {
       setLoading(false)
     }
@@ -172,15 +201,70 @@ export function Login() {
           <div className="relative w-full max-w-sm 2xl:max-w-md">
           <span className="text-sm font-semibold text-brand">Welcome back 👋</span>
           <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Sign in to <span className="text-brand">DataHub</span>
+            {mfa ? (
+              <>Two-factor code</>
+            ) : (
+              <>
+                Sign in to <span className="text-brand">DataHub</span>
+              </>
+            )}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Internal tool for Pandabeswar office staff -- sign in with the username and
-            password issued by your administrator.
+            {mfa
+              ? "Enter the 6-digit code from your authenticator app."
+              : "Internal tool for Pandabeswar office staff -- sign in with the username and password issued by your administrator."}
           </p>
 
           <div className="my-6 border-t" />
 
+          {mfa ? (
+            <form
+              onSubmit={handleVerifyMfa}
+              className="flex flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm"
+            >
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Authenticator code
+                </label>
+                <div className="relative">
+                  <KeyRound className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="6-digit code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    className="pl-9 tracking-widest"
+                  />
+                </div>
+              </div>
+
+              {/* Always mounted (not conditionally rendered) so the card's
+                  height -- and the vertically-centered layout around it --
+                  doesn't jump when an error appears/disappears. -mt-4
+                  cancels the flex gap above so this slot doesn't ALSO add a
+                  gap on top of its own reserved height when empty. */}
+              <p className="-mt-4 min-h-5 text-sm text-red-600 dark:text-red-400">{error}</p>
+
+              <Button type="submit" disabled={loading}>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
+                Verify &amp; sign in
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMfa(null)
+                  setCode("")
+                  setError("")
+                }}
+                className="cursor-pointer text-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                Back to sign in
+              </button>
+            </form>
+          ) : (
           <form
             onSubmit={handleSubmit}
             className="flex flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm"
@@ -224,16 +308,17 @@ export function Login() {
             </div>
 
             <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="size-3.5 cursor-pointer rounded border-input accent-brand"
-              />
+              <Checkbox checked={remember} onCheckedChange={(checked) => setRemember(checked === true)} />
               Remember me
             </label>
 
-            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            {/* Always mounted (not conditionally rendered) so the card's
+                height -- and the vertically-centered layout around it --
+                doesn't jump when an error appears/disappears. -mt-4 cancels
+                the flex gap above so this slot doesn't ALSO add a gap on
+                top of its own reserved height when empty -- otherwise the
+                no-error state gets an oversized, dead-looking space here. */}
+            <p className="-mt-4 min-h-5 text-sm text-red-600 dark:text-red-400">{error}</p>
 
             <Button type="submit" disabled={loading}>
               {loading ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
@@ -257,6 +342,7 @@ export function Login() {
               </span>
             </div>
           </form>
+          )}
 
           <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5 shrink-0" />

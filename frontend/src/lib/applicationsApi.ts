@@ -77,13 +77,19 @@ function headers(session: Session, extra?: Record<string, string>) {
   }
 }
 
+// `page` tells the RBAC RLS policies which page-level write permission to
+// check (Search and Applications both write this same table but are
+// permissioned independently -- see db/postgres/init/05-rbac-schema.sql).
+export type ApplicationsPage = "search" | "applications"
+
 export async function createApplication(
   session: Session,
-  input: ApplicationInput
+  input: ApplicationInput,
+  page: ApplicationsPage
 ): Promise<Application> {
   const res = await fetch(`${API_BASE}/rest/applications`, {
     method: "POST",
-    headers: headers(session, { Prefer: "return=representation" }),
+    headers: headers(session, { Prefer: "return=representation", "X-Page": page }),
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(await parseError(res))
@@ -180,11 +186,12 @@ export async function getApplication(session: Session, id: string): Promise<Appl
 export async function updateApplication(
   session: Session,
   id: string,
-  input: ApplicationInput
+  input: ApplicationInput,
+  page: ApplicationsPage
 ): Promise<Application> {
   const res = await fetch(`${API_BASE}/rest/applications?id=eq.${id}`, {
     method: "PATCH",
-    headers: headers(session, { Prefer: "return=representation" }),
+    headers: headers(session, { Prefer: "return=representation", "X-Page": page }),
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(await parseError(res))

@@ -4,7 +4,7 @@
 // local dev needs a cross-origin base URL to reach the db droplet directly.
 export const API_BASE = import.meta.env.VITE_CITIZENS_API_URL ?? "http://localhost:8081"
 
-const STORAGE_KEY = "citizen_portal_session"
+export const STORAGE_KEY = "citizen_portal_session"
 const EMAIL_DOMAIN = "internal.local"
 
 export interface Session {
@@ -13,19 +13,34 @@ export interface Session {
   expires_at: number // epoch seconds
 }
 
-interface TokenResponse {
+export interface TokenResponse {
   access_token: string
   refresh_token: string
   expires_in: number
   error?: string
   error_description?: string
   msg?: string
+  // Only present on the password-grant response -- used to detect whether
+  // this account has TOTP MFA enrolled before deciding whether to persist
+  // the session (see login() below).
+  user?: { factors?: { id: string; factor_type: string; status: string }[] }
 }
+
+export type LoginResult =
+  | { mfaRequired: false; session: Session }
+  | { mfaRequired: true; factorId: string; pendingAccessToken: string }
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   const [, payload] = token.split(".")
   const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
   return JSON.parse(json)
+}
+
+// The GoTrue user id (JWT `sub` claim) -- used to look up this user's own
+// rows in public.staff/public.permissions (see rbacApi.ts).
+export function userIdFromSession(session: Session): string {
+  const payload = decodeJwtPayload(session.access_token)
+  return typeof payload.sub === "string" ? payload.sub : ""
 }
 
 export function usernameFromSession(session: Session): string {
@@ -55,7 +70,10 @@ export function loadSession(): Session | null {
   }
 }
 
-function saveSession(res: TokenResponse, storage: Storage): Session {
+// Exported so AuthContext can persist the session that comes back from
+// completing an MFA step-up (mfaVerify below), which returns the same
+// token-response shape as login()/refresh().
+export function saveSession(res: TokenResponse, storage: Storage): Session {
   const session: Session = {
     access_token: res.access_token,
     refresh_token: res.refresh_token,
@@ -87,7 +105,7 @@ export async function login(
   username: string,
   password: string,
   remember = true
-): Promise<Session> {
+): Promise<LoginResult> {
   const email = `${username.trim()}@${EMAIL_DOMAIN}`
   const res = await fetch(`${API_BASE}/auth/token?grant_type=password`, {
     method: "POST",
@@ -95,7 +113,44 @@ export async function login(
     body: JSON.stringify({ email, password }),
   })
   if (!res.ok) throw new Error(await parseAuthError(res))
-  return saveSession((await res.json()) as TokenResponse, remember ? localStorage : sessionStorage)
+  const body = (await res.json()) as TokenResponse
+
+  const totpFactor = body.user?.factors?.find((f) => f.factor_type === "totp" && f.status === "verified")
+  if (totpFactor) {
+    // Deliberately not calling saveSession -- this token is only aal1, and
+    // (as of db/postgres/init/07-mfa-enforcement.sql) useless against every
+    // table for an MFA-enrolled account anyway. Never persisted, even
+    // transiently, until the TOTP code is verified.
+    return { mfaRequired: true, factorId: totpFactor.id, pendingAccessToken: body.access_token }
+  }
+
+  return { mfaRequired: false, session: saveSession(body, remember ? localStorage : sessionStorage) }
+}
+
+// Login-time step-up (matches the enrollment/disable flow in mfaApi.ts).
+export async function mfaChallenge(accessToken: string, factorId: string): Promise<{ challengeId: string }> {
+  const res = await fetch(`${API_BASE}/auth/factors/${factorId}/challenge`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+  })
+  if (!res.ok) throw new Error(await parseAuthError(res))
+  const body = (await res.json()) as { id: string }
+  return { challengeId: body.id }
+}
+
+export async function mfaVerify(
+  accessToken: string,
+  factorId: string,
+  challengeId: string,
+  code: string
+): Promise<TokenResponse> {
+  const res = await fetch(`${API_BASE}/auth/factors/${factorId}/verify`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge_id: challengeId, code }),
+  })
+  if (!res.ok) throw new Error(await parseAuthError(res))
+  return (await res.json()) as TokenResponse
 }
 
 export async function refresh(session: Session): Promise<Session> {
