@@ -46,6 +46,20 @@ export async function getTotpFactor(session: Session): Promise<TotpFactor | null
 export async function enrollTotp(
   session: Session
 ): Promise<{ factorId: string; qrSvg: string; secret: string }> {
+  // A previous enrollment attempt that was never confirmed (QR shown, then
+  // abandoned/cancelled) leaves an unverified factor behind. GoTrue
+  // enforces a unique friendly_name per user, so retrying with the same
+  // name otherwise fails with a 422 -- clean up the stale one first.
+  // (Unverified factors don't require aal2 to delete, only verified ones
+  // do.)
+  const existing = await getTotpFactor(session)
+  if (existing && existing.status === "unverified") {
+    await fetch(`${API_BASE}/auth/factors/${existing.id}`, {
+      method: "DELETE",
+      headers: headers(session),
+    }).catch(() => {})
+  }
+
   const res = await fetch(`${API_BASE}/auth/factors`, {
     method: "POST",
     headers: headers(session),
@@ -54,6 +68,16 @@ export async function enrollTotp(
   if (!res.ok) throw new Error(await parseError(res))
   const body = (await res.json()) as { id: string; totp: { qr_code: string; secret: string } }
   return { factorId: body.id, qrSvg: body.totp.qr_code, secret: body.totp.secret }
+}
+
+// Abandons an in-progress enrollment (user hit Cancel before confirming).
+// Without this, the unverified factor from enrollTotp() lingers until the
+// next enroll attempt cleans it up -- deleting it immediately instead.
+export async function cancelTotpEnrollment(session: Session, factorId: string): Promise<void> {
+  await fetch(`${API_BASE}/auth/factors/${factorId}`, {
+    method: "DELETE",
+    headers: headers(session),
+  }).catch(() => {})
 }
 
 // Confirms a freshly-enrolled factor. Uses the *current* session's token --

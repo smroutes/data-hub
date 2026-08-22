@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/AuthContext"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
-import { getTotpFactor, enrollTotp, confirmTotpEnrollment, disableTotp } from "@/lib/mfaApi"
+import { getTotpFactor, enrollTotp, cancelTotpEnrollment, confirmTotpEnrollment, disableTotp } from "@/lib/mfaApi"
 import type { TotpFactor } from "@/lib/mfaApi"
 
 type Step = "loading" | "off" | "enrolling" | "on" | "disabling"
@@ -153,7 +153,15 @@ export function SettingsPage() {
                 {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep("off")} disabled={busy}>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (session && factor) cancelTotpEnrollment(session, factor.id)
+                      setFactor(null)
+                      setStep("off")
+                    }}
+                    disabled={busy}
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleConfirmEnroll} disabled={busy}>
