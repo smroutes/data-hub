@@ -150,11 +150,18 @@ export function Header() {
               <DropdownMenuItem asChild>
                 <Link to="/">Home</Link>
               </DropdownMenuItem>
-              {annapurnaItems.map((item) => (
-                <DropdownMenuItem key={item.to} asChild>
-                  <Link to={item.to}>{item.label}</Link>
-                </DropdownMenuItem>
-              ))}
+              {annapurnaItems.length > 0 && (
+                <>
+                  <div className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground">
+                    Annapurna Scheme
+                  </div>
+                  {annapurnaItems.map((item) => (
+                    <DropdownMenuItem key={item.to} asChild className="pl-4">
+                      <Link to={item.to}>{item.label}</Link>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
               {isAdmin && (
                 <DropdownMenuItem asChild>
                   <Link to="/admin">Admin</Link>
