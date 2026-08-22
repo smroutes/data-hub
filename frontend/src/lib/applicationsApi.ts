@@ -146,8 +146,16 @@ export async function listFlaggedApplications(
     params.append("or", `(name.ilike.*${safe}*,application_number.ilike.*${safe}*,mobile_number.ilike.*${safe}*)`)
   }
   if (date) {
-    params.append("created_at", `gte.${date}T00:00:00+05:30`)
-    params.append("created_at", `lt.${nextDateString(date)}T00:00:00+05:30`)
+    const start = `${date}T00:00:00+05:30`
+    const end = `${nextDateString(date)}T00:00:00+05:30`
+    // Match the same "effective submission date" the UI displays and sorts
+    // by (see effectiveSubmissionDate below): created_at for newly_submitted
+    // rows, updated_at for re_submitted ones -- otherwise filtering by
+    // "today" misses everything resubmitted today but created earlier.
+    params.append(
+      "or",
+      `(and(submission_flag.eq.re_submitted,updated_at.gte.${start},updated_at.lt.${end}),and(submission_flag.neq.re_submitted,created_at.gte.${start},created_at.lt.${end}))`
+    )
   }
 
   const res = await fetch(`${API_BASE}/rest/applications?${params.toString()}`, {
