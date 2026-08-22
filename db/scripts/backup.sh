@@ -1,9 +1,11 @@
 #!/bin/bash
-# Daily logical backup: pg_dump -> gzip -> Cloudflare R2, with verification
-# at each step and safe retention (never deletes the last remaining backup).
+# Logical backup: pg_dump -> gzip -> Cloudflare R2, with verification at
+# each step and safe retention (never deletes the last remaining backup).
+# Filenames include the time, not just the date, so this is safe to run
+# many times a day without each run overwriting the last.
 #
-# Intended to run from host cron, e.g.:
-#   0 2 * * * cd /opt/data-hub/db && ./scripts/backup.sh >> /var/log/db-backup.log 2>&1
+# Intended to run from host cron, e.g. every 15 minutes:
+#   */15 * * * * cd /opt/data-hub/db && ./scripts/backup.sh >> /var/log/db-backup.log 2>&1
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -18,10 +20,15 @@ fi
 
 RETENTION_DAILY_DAYS="${BACKUP_RETENTION_DAILY_DAYS:-7}"
 RETENTION_WEEKLY_DAYS="${BACKUP_RETENTION_WEEKLY_DAYS:-56}"
+# Off by default -- with intraday backups piling up fast, deleting old ones
+# automatically is riskier than usual while this data is still critical.
+# Set to "true" in .env once you're ready to let old backups age out again.
+PRUNE_ENABLED="${BACKUP_PRUNE_ENABLED:-false}"
 DB_NAME="${POSTGRES_DB:-citizens}"
 DB_USER="${POSTGRES_USER:-postgres}"
 
 DATE="$(date +%Y-%m-%d)"
+TIME="$(date +%H%M%S)"
 DOW="$(date +%u)" # 1=Monday .. 7=Sunday
 TMPFILE="$(mktemp)"
 trap 'rm -f "$TMPFILE"' EXIT
@@ -52,7 +59,7 @@ fi
 log "Dump OK (${SIZE_BYTES} bytes)"
 
 # 4. Upload to R2.
-DAILY_KEY="postgresql/daily/${DATE}/database.sql.gz"
+DAILY_KEY="postgresql/daily/${DATE}/database-${TIME}.sql.gz"
 log "Uploading to r2/${R2_BUCKET}/${DAILY_KEY}..."
 if ! docker run --rm -e MC_HOST_r2 -v "$TMPFILE:/backup.sql.gz:ro" minio/mc cp /backup.sql.gz "r2/${R2_BUCKET}/${DAILY_KEY}"; then
   log "ERROR: upload failed"
@@ -67,10 +74,11 @@ if [ "$REMOTE_SIZE" != "$SIZE_BYTES" ]; then
 fi
 log "Upload verified (${REMOTE_SIZE} bytes)"
 
-# Also keep a weekly copy on Sundays.
-if [ "$DOW" = "7" ]; then
+# Also keep a weekly copy on Sundays -- pinned to one run (02:00-02:14) so
+# running every 15 minutes doesn't create ~96 weekly copies on a Sunday.
+if [ "$DOW" = "7" ] && [ "${TIME:0:2}" = "02" ] && [ "${TIME:2:2}" = "00" ]; then
   WEEKLY_KEY="postgresql/weekly/${DATE}/database.sql.gz"
-  log "Sunday -- also copying to r2/${R2_BUCKET}/${WEEKLY_KEY}..."
+  log "Sunday 02:00 -- also copying to r2/${R2_BUCKET}/${WEEKLY_KEY}..."
   docker run --rm -e MC_HOST_r2 minio/mc cp "r2/${R2_BUCKET}/${DAILY_KEY}" "r2/${R2_BUCKET}/${WEEKLY_KEY}"
 fi
 
@@ -103,7 +111,11 @@ prune() {
   done
 }
 
-prune "postgresql/daily" "$RETENTION_DAILY_DAYS"
-prune "postgresql/weekly" "$RETENTION_WEEKLY_DAYS"
+if [ "$PRUNE_ENABLED" = "true" ]; then
+  prune "postgresql/daily" "$RETENTION_DAILY_DAYS"
+  prune "postgresql/weekly" "$RETENTION_WEEKLY_DAYS"
+else
+  log "Retention pruning disabled (BACKUP_PRUNE_ENABLED=false) -- keeping everything for now"
+fi
 
 log "Done."
