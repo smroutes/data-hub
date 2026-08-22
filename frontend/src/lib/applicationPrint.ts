@@ -89,7 +89,8 @@ function buildLetterHtml(application: Application): string {
   ${field("Aadhaar No.:", filled(application.aadhaar_number))}
   ${field("Voter Card / EPIC:", filled(application.voter_number))}
   ${field("Mobile No.:", filled(application.mobile_number))}
-  <p class="field" style="margin-bottom: 20pt;"><span class="bold">Date:</span> ${escapeHtml(submissionDate(application))}</p>
+  ${field("Date:", submissionDate(application))}
+  <p class="field" style="margin-bottom: 20pt;"><span class="bold">Remarks:</span> ${escapeHtml(filled(application.remarks))}</p>
 
   <p style="text-align: right;">ধন্যবাদান্তে,</p>
   <p style="text-align: right; margin-top: 28pt;">___________________________</p>
