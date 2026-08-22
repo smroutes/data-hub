@@ -35,7 +35,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [expired, setExpired] = useState(false)
   const [access, setAccess] = useState<StaffAccess | null>(null)
-  const [accessLoading, setAccessLoading] = useState(false)
+  // Starts true (not false) -- a session can be set synchronously with
+  // `loading` turning false (see getValidSession() below), one render
+  // before the access-fetch effect has even run. If this started false,
+  // ProtectedRoute would see accessLoading=false + access=null for that
+  // one frame and briefly render "access denied" before the real answer
+  // arrives.
+  const [accessLoading, setAccessLoading] = useState(true)
 
   useEffect(() => {
     auth.getValidSession().then((s) => {
@@ -51,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!session) {
       setAccess(null)
+      setAccessLoading(false)
       return
     }
     setAccessLoading(true)

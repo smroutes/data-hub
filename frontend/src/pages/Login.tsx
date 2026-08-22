@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/lib/AuthContext"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import loginOffice from "@/assets/login-office.jpg"
@@ -224,12 +225,7 @@ export function Login() {
             </div>
 
             <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="size-3.5 cursor-pointer rounded border-input accent-brand"
-              />
+              <Checkbox checked={remember} onCheckedChange={(checked) => setRemember(checked === true)} />
               Remember me
             </label>
 

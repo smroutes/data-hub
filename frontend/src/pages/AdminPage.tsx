@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { DataTable } from "@/components/ui/data-table"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/lib/AuthContext"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import {
@@ -172,107 +174,85 @@ export function AdminPage() {
             <CardDescription>Manage staff access and review activity.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 grid w-fit grid-cols-2 gap-1 rounded-md bg-muted p-1">
-              <button
-                type="button"
-                onClick={() => setTab("users")}
-                className={
-                  tab === "users"
-                    ? "rounded bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm"
-                    : "rounded px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-                }
-              >
-                Users &amp; Permissions
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("activity")}
-                className={
-                  tab === "activity"
-                    ? "rounded bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm"
-                    : "rounded px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-                }
-              >
-                Activity
-              </button>
-            </div>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "users" | "activity")}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+              </TabsList>
 
-            {error && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+              {error && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-            {tab === "users" ? (
-              loadingStaff ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead rowSpan={2} className="align-bottom">
-                          Username
-                        </TableHead>
-                        <TableHead rowSpan={2} className="text-center align-bottom">
-                          Admin
-                        </TableHead>
-                        {PAGES.map((p) => (
-                          <TableHead key={p} colSpan={2} className="border-l text-center">
-                            {PAGE_LABELS[p]}
+              <TabsContent value="users">
+                {loadingStaff ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead rowSpan={2} className="align-bottom">
+                            Username
                           </TableHead>
-                        ))}
-                      </TableRow>
-                      <TableRow>
-                        {PAGES.map((p) => (
-                          <Fragment key={p}>
-                            <TableHead className="border-l text-center text-xs">Read</TableHead>
-                            <TableHead className="text-center text-xs">Write</TableHead>
-                          </Fragment>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {staff.map((member) => (
-                        <TableRow key={member.id}>
-                          <TableCell className="font-medium">{member.username}</TableCell>
-                          <TableCell className="text-center">
-                            <input
-                              type="checkbox"
-                              checked={member.is_admin}
-                              onChange={() => handleToggleAdmin(member)}
-                              className="size-3.5 cursor-pointer accent-brand"
-                              title="Admin (full access)"
-                            />
-                          </TableCell>
+                          <TableHead rowSpan={2} className="text-center align-bottom">
+                            Admin
+                          </TableHead>
+                          {PAGES.map((p) => (
+                            <TableHead key={p} colSpan={2} className="border-l text-center">
+                              {PAGE_LABELS[p]}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                        <TableRow>
                           {PAGES.map((p) => (
                             <Fragment key={p}>
-                              <TableCell className="border-l text-center">
-                                <input
-                                  type="checkbox"
-                                  disabled={member.is_admin}
-                                  checked={member.is_admin || Boolean(perms[member.id]?.[p]?.read)}
-                                  onChange={() => handleTogglePermission(member.id, p, "read")}
-                                  className="size-3.5 cursor-pointer accent-brand disabled:cursor-not-allowed disabled:opacity-60"
-                                />
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <input
-                                  type="checkbox"
-                                  disabled={member.is_admin}
-                                  checked={member.is_admin || Boolean(perms[member.id]?.[p]?.write)}
-                                  onChange={() => handleTogglePermission(member.id, p, "write")}
-                                  className="size-3.5 cursor-pointer accent-brand disabled:cursor-not-allowed disabled:opacity-60"
-                                />
-                              </TableCell>
+                              <TableHead className="border-l text-center text-xs">Read</TableHead>
+                              <TableHead className="text-center text-xs">Write</TableHead>
                             </Fragment>
                           ))}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )
-            ) : (
-              <>
+                      </TableHeader>
+                      <TableBody>
+                        {staff.map((member) => (
+                          <TableRow key={member.id}>
+                            <TableCell className="font-medium">{member.username}</TableCell>
+                            <TableCell className="text-center">
+                              <Checkbox
+                                checked={member.is_admin}
+                                onCheckedChange={() => handleToggleAdmin(member)}
+                                aria-label="Admin (full access)"
+                              />
+                            </TableCell>
+                            {PAGES.map((p) => (
+                              <Fragment key={p}>
+                                <TableCell className="border-l text-center">
+                                  <Checkbox
+                                    disabled={member.is_admin}
+                                    checked={member.is_admin || Boolean(perms[member.id]?.[p]?.read)}
+                                    onCheckedChange={() => handleTogglePermission(member.id, p, "read")}
+                                    aria-label={`${PAGE_LABELS[p]} read`}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Checkbox
+                                    disabled={member.is_admin}
+                                    checked={member.is_admin || Boolean(perms[member.id]?.[p]?.write)}
+                                    onCheckedChange={() => handleTogglePermission(member.id, p, "write")}
+                                    aria-label={`${PAGE_LABELS[p]} write`}
+                                  />
+                                </TableCell>
+                              </Fragment>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="activity">
                 {auditLoading ? (
                   <div className="flex justify-center py-10">
                     <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -308,8 +288,8 @@ export function AdminPage() {
                     </div>
                   </div>
                 )}
-              </>
-            )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </main>

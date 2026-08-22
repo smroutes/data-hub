@@ -6,6 +6,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
+import {
+  NavigationMenu,
+  NavigationMenuList,
+  NavigationMenuItem,
+  NavigationMenuLink,
+} from "@/components/ui/navigation-menu"
 import { useAuth } from "@/lib/AuthContext"
 import { usernameFromSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
@@ -45,38 +51,41 @@ export function Header() {
           </div>
         </div>
 
-        <nav className="flex items-center gap-1 justify-self-center">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.to
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-          {isAdmin && (
-            <Link
-              to="/admin"
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                location.pathname === "/admin"
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Admin
-            </Link>
-          )}
-        </nav>
+        <NavigationMenu viewport={false} className="max-w-none justify-self-center">
+          <NavigationMenuList className="gap-1">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.to
+              return (
+                <NavigationMenuItem key={item.to}>
+                  <NavigationMenuLink
+                    asChild
+                    active={isActive}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 font-medium",
+                      isActive && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    <Link to={item.to}>{item.label}</Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              )
+            })}
+            {isAdmin && (
+              <NavigationMenuItem>
+                <NavigationMenuLink
+                  asChild
+                  active={location.pathname === "/admin"}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 font-medium",
+                    location.pathname === "/admin" && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  <Link to="/admin">Admin</Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            )}
+          </NavigationMenuList>
+        </NavigationMenu>
 
         <div className="justify-self-end">
           <DropdownMenu>
