@@ -64,8 +64,8 @@ export function Header() {
                 asChild
                 active={location.pathname === "/"}
                 className={cn(
-                  "rounded-md px-3 py-1.5 font-medium",
-                  location.pathname === "/" && "bg-accent text-accent-foreground"
+                  "cursor-pointer rounded-md border border-transparent px-3 py-1.5 font-medium",
+                  location.pathname === "/" && "border-border"
                 )}
               >
                 <Link to="/">Home</Link>
@@ -76,8 +76,8 @@ export function Header() {
               <NavigationMenuItem>
                 <NavigationMenuTrigger
                   className={cn(
-                    "rounded-md px-3 py-1.5 font-medium",
-                    isAnnapurnaActive && "bg-accent text-accent-foreground"
+                    "cursor-pointer rounded-md border border-transparent px-3 py-1.5 font-medium",
+                    isAnnapurnaActive && "border-border"
                   )}
                 >
                   Annapurna Scheme
@@ -92,8 +92,8 @@ export function Header() {
                             asChild
                             active={isActive}
                             className={cn(
-                              "rounded-md px-3 py-1.5 font-medium",
-                              isActive && "bg-accent text-accent-foreground"
+                              "cursor-pointer rounded-md border border-transparent px-3 py-1.5 font-medium",
+                              isActive && "border-border"
                             )}
                           >
                             <Link to={item.to}>{item.label}</Link>
@@ -112,8 +112,8 @@ export function Header() {
                   asChild
                   active={location.pathname === "/admin"}
                   className={cn(
-                    "rounded-md px-3 py-1.5 font-medium",
-                    location.pathname === "/admin" && "bg-accent text-accent-foreground"
+                    "cursor-pointer rounded-md border border-transparent px-3 py-1.5 font-medium",
+                    location.pathname === "/admin" && "border-border"
                   )}
                 >
                   <Link to="/admin">Admin</Link>
