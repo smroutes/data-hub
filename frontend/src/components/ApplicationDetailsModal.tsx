@@ -52,6 +52,9 @@ export function ApplicationDetailsModal({
             <div className="sm:col-span-2">
               <Field label="Full Address" value={application.address} />
             </div>
+            <div className="sm:col-span-2">
+              <Field label="Remarks" value={application.remarks} />
+            </div>
           </div>
         </div>
         <div className="flex shrink-0 justify-end border-t p-4">

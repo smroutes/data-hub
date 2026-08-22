@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.applications (
   relative_name       text,
   submission_flag     text, -- 'newly_submitted' | 're_submitted' | null
   application_mode    text, -- 'offline' | 'online' | 'not_applied' | null
+  remarks             text, -- free-form staff notes
 
   -- Populated only for rows synced in from the Annapurna Scheme CSV
   -- (see scripts/import-annapurna.sh); left null for staff-entered rows.

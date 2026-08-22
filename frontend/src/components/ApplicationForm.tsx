@@ -33,6 +33,7 @@ export function ApplicationForm({
     address: initial?.address ?? "",
     voter_number: initial?.voter_number ?? "",
     application_mode: initial?.application_mode ?? "",
+    remarks: initial?.remarks ?? "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState("")
@@ -216,6 +217,7 @@ export function ApplicationForm({
             <Input
               value={values.voter_number ?? ""}
               onChange={(e) => set("voter_number", e.target.value)}
+              placeholder="Voter Card / EPIC number"
             />
           </div>
 
@@ -232,6 +234,15 @@ export function ApplicationForm({
               <option value="online">Online</option>
               <option value="not_applied">Not Applied</option>
             </Select>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-foreground">Remarks</label>
+            <Textarea
+              value={values.remarks ?? ""}
+              onChange={(e) => set("remarks", e.target.value)}
+              placeholder="Any additional notes about this application"
+            />
           </div>
         </div>
 
