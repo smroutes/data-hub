@@ -38,9 +38,14 @@ const ANNAPURNA_ITEMS: { to: string; label: string; description: string; page: P
 
 const NAV_ITEM_CLASS = "cursor-pointer rounded-md px-3 py-1.5 font-medium"
 
+// Deterministic per-account avatar -- same seed always renders the same
+// image, no upload/storage needed. https://www.dicebear.com/styles/planets/
+function avatarUrl(seed: string): string {
+  return `https://api.dicebear.com/9.x/planets/svg?seed=${encodeURIComponent(seed)}`
+}
+
 export function Header() {
   const { signOut, canVisit, isAdmin, displayName } = useAuth()
-  const initial = displayName ? displayName[0].toUpperCase() : "?"
   const annapurnaItems = ANNAPURNA_ITEMS.filter((item) => canVisit(item.page))
 
   return (
@@ -109,9 +114,11 @@ export function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex cursor-pointer items-center gap-2 rounded-md py-1 pr-1 pl-1.5 transition-colors hover:bg-accent">
-                <span className="flex size-8 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground">
-                  {initial}
-                </span>
+                <img
+                  src={avatarUrl(displayName)}
+                  alt=""
+                  className="size-8 shrink-0 rounded-full bg-accent"
+                />
                 <span className="text-sm font-medium text-foreground">{displayName}</span>
                 <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
               </button>
@@ -139,9 +146,11 @@ export function Header() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <span className="flex size-7 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-foreground">
-                  {initial}
-                </span>
+                <img
+                  src={avatarUrl(displayName)}
+                  alt=""
+                  className="size-7 shrink-0 rounded-full bg-accent"
+                />
                 <span className="text-sm font-medium text-foreground">{displayName}</span>
               </div>
               <DropdownMenuSeparator />
