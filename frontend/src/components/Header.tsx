@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { ChevronDown, Database, LogOut } from "lucide-react"
 import {
   DropdownMenu,
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/navigation-menu"
 import { useAuth } from "@/lib/AuthContext"
 import { usernameFromSession } from "@/lib/auth"
-import { cn } from "@/lib/utils"
 import type { Page } from "@/lib/rbacApi"
 
 // Search and Applications both belong to the Annapurna Scheme work, so
@@ -27,13 +26,23 @@ const ANNAPURNA_ITEMS: { to: string; label: string; page: Page }[] = [
   { to: "/as/applications", label: "Applications", page: "applications" },
 ]
 
+// Our --accent token is the brand's saffron tint (used deliberately
+// elsewhere -- badges, the user-avatar circle, etc.), but shadcn's
+// NavigationMenu bakes bg-accent/text-accent-foreground into its own
+// hover/open-state defaults, which reads as a loud color flood here
+// instead of the subtle neutral highlight shadcn's own docs show. Override
+// just those states to neutral bg-muted, without touching --accent itself.
+const NAV_ITEM_CLASS =
+  "cursor-pointer rounded-md px-3 py-1.5 font-medium " +
+  "hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground " +
+  "data-[state=open]:bg-muted data-[state=open]:text-foreground " +
+  "data-[state=open]:hover:bg-muted data-[state=open]:focus:bg-muted"
+
 export function Header() {
   const { session, signOut, canVisit, isAdmin } = useAuth()
-  const location = useLocation()
   const username = session ? usernameFromSession(session) : ""
   const initial = username ? username[0].toUpperCase() : "?"
   const annapurnaItems = ANNAPURNA_ITEMS.filter((item) => canVisit(item.page))
-  const isAnnapurnaActive = annapurnaItems.some((item) => location.pathname === item.to)
 
   return (
     <header className="sticky top-0 z-20 border-b bg-card">
@@ -60,47 +69,23 @@ export function Header() {
         <NavigationMenu viewport={false} className="max-w-none justify-self-center">
           <NavigationMenuList className="gap-1">
             <NavigationMenuItem>
-              <NavigationMenuLink
-                asChild
-                active={location.pathname === "/"}
-                className={cn(
-                  "cursor-pointer rounded-md border border-transparent px-3 py-1.5 font-medium",
-                  location.pathname === "/" && "border-border"
-                )}
-              >
+              <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
                 <Link to="/">Home</Link>
               </NavigationMenuLink>
             </NavigationMenuItem>
 
             {annapurnaItems.length > 0 && (
               <NavigationMenuItem>
-                <NavigationMenuTrigger
-                  className={cn(
-                    "cursor-pointer rounded-md border border-transparent px-3 py-1.5 font-medium",
-                    isAnnapurnaActive && "border-border"
-                  )}
-                >
-                  Annapurna Scheme
-                </NavigationMenuTrigger>
+                <NavigationMenuTrigger className={NAV_ITEM_CLASS}>Annapurna Scheme</NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <ul className="grid w-44 gap-1 p-1.5">
-                    {annapurnaItems.map((item) => {
-                      const isActive = location.pathname === item.to
-                      return (
-                        <li key={item.to}>
-                          <NavigationMenuLink
-                            asChild
-                            active={isActive}
-                            className={cn(
-                              "cursor-pointer rounded-md border border-transparent px-3 py-1.5 font-medium",
-                              isActive && "border-border"
-                            )}
-                          >
-                            <Link to={item.to}>{item.label}</Link>
-                          </NavigationMenuLink>
-                        </li>
-                      )
-                    })}
+                    {annapurnaItems.map((item) => (
+                      <li key={item.to}>
+                        <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
+                          <Link to={item.to}>{item.label}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                    ))}
                   </ul>
                 </NavigationMenuContent>
               </NavigationMenuItem>
@@ -108,14 +93,7 @@ export function Header() {
 
             {isAdmin && (
               <NavigationMenuItem>
-                <NavigationMenuLink
-                  asChild
-                  active={location.pathname === "/admin"}
-                  className={cn(
-                    "cursor-pointer rounded-md border border-transparent px-3 py-1.5 font-medium",
-                    location.pathname === "/admin" && "border-border"
-                  )}
-                >
+                <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
                   <Link to="/admin">Admin</Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
