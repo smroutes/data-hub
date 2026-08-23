@@ -183,7 +183,7 @@ export function AIApplicationWriter() {
                   className="border-input pointer-events-none absolute inset-0 min-h-40 overflow-hidden rounded-md border border-transparent px-3 py-2 text-sm whitespace-pre-wrap break-words"
                 >
                   <span className="invisible">{prompt}</span>
-                  <span className="text-muted-foreground">{suggestion}</span>
+                  <span className="text-muted-foreground italic">{suggestion}</span>
                 </div>
                 <Textarea
                   value={prompt}
