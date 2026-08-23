@@ -51,7 +51,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b bg-card">
       <div className="h-1 bg-gradient-to-r from-brand via-orange-400 to-brand" />
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-2.5 px-4 py-3.5 md:grid md:grid-cols-[1fr_auto_1fr]">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2.5 px-4 py-3.5 md:grid md:grid-cols-[1fr_auto_1fr]">
         <div className="flex items-center gap-2.5 justify-self-start">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-orange-600 shadow-sm">
             <Database className="size-4.5 text-white" strokeWidth={2.25} />

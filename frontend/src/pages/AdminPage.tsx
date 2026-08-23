@@ -167,7 +167,7 @@ export function AdminPage() {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <Header />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Admin</CardTitle>
