@@ -276,15 +276,24 @@ def generate_application(body: GenerateApplicationRequest):
     if body.category:
         user_prompt = f"Application type: {body.category}\n\n{prompt}"
 
-    client = get_ai_client("deepseek")
+    # Trying Groq's gpt-oss-20b here instead of DeepSeek, to see how it
+    # performs for full generations (not just the short suggest_prompt
+    # completions) -- switch back to get_ai_client("deepseek") / DEEPSEEK_MODEL
+    # if quality isn't good enough.
+    client = get_ai_client("groq")
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
     try:
-        completion = client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+        # See suggest_prompt() for why reasoning_effort is needed for a
+        # reasoning model and why it 400s (falls back below) on a plain one.
+        try:
+            completion = client.chat.completions.create(
+                model=GROQ_MODEL, messages=messages, max_tokens=3000, reasoning_effort="low"
+            )
+        except BadRequestError:
+            completion = client.chat.completions.create(model=GROQ_MODEL, messages=messages, max_tokens=3000)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
 

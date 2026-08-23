@@ -293,9 +293,13 @@ export function AIApplicationWriter() {
             )}
             <CardContent className="relative p-0">
               {generating && (
-                <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
-                  <Loader2 className="size-3 animate-spin" />
-                  Generating...
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-b-xl bg-white/85 backdrop-blur-sm">
+                  <span className="relative flex size-12 items-center justify-center">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand/30" />
+                    <Sparkles className="relative size-6 text-brand" />
+                  </span>
+                  <p className="text-sm font-medium text-foreground">Generating your application...</p>
+                  <p className="text-xs text-muted-foreground">This usually takes a few seconds.</p>
                 </div>
               )}
               {/* Always mounted -- even with nothing generated yet, someone
