@@ -95,7 +95,19 @@ export const ApplicationEditor = forwardRef<
 
   return (
     <Plate editor={editor} onChange={() => language === "bn" && onUpdate()}>
-      <EditorContainer className="h-full">
+      {/* !overflow-visible: EditorContainer defaults to overflow-y-auto,
+          which -- regardless of whether it ever actually overflows --
+          makes it the toolbar's "nearest scrolling ancestor" for
+          position:sticky purposes instead of the page. Since this
+          container has no capped height (it grows with content; the page
+          itself scrolls), that default just breaks the toolbar's sticky
+          offset: it gets measured from this container's own top instead
+          of the page/header, so the sticky threshold is satisfied
+          immediately and the toolbar renders permanently shifted down by
+          its offset, leaving a gap above it. Overriding back to normal
+          flow makes the page the sticky reference, matching the site
+          header it's meant to sit below. */}
+      <EditorContainer className="h-full !overflow-visible">
         <Editor
           variant="none"
           className="min-h-[44rem] px-4 py-3 text-base"
