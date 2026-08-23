@@ -38,10 +38,20 @@ export async function suggestPrompt(
 // user can actually act on; anything else falls back to the raw detail
 // (our own HTTPExceptions always set a real message) or a generic retry
 // prompt.
-function friendlyErrorMessage(status: number, detail?: string | null): string {
-  if (detail) return detail
+//
+// `detail` is typed unknown, not string, because FastAPI's own request
+// validation (e.g. the prompt-length cap, bypassed only by calling this
+// API directly rather than through the UI's own character limit) returns
+// detail as an array of Pydantic error objects, not a plain string -- only
+// trust it when it actually is one, so that shape doesn't get stringified
+// into an unreadable toast.
+function friendlyErrorMessage(status: number, detail?: unknown): string {
+  if (typeof detail === "string" && detail) return detail
   if (status === 502 || status === 503 || status === 504) {
     return "The AI service is temporarily unavailable. Please try again in a moment."
+  }
+  if (status === 422) {
+    return "That request isn't valid. Please check what you entered and try again."
   }
   return "Something went wrong. Please try again."
 }

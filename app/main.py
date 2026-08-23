@@ -4,7 +4,7 @@ import os
 import duckdb
 from fastapi import FastAPI, HTTPException, Request
 from openai import BadRequestError, OpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 CACHE_DIR = os.environ.get("CACHE_DIR", "/app/cache")
@@ -239,7 +239,9 @@ GENERATE_APPLICATION_SYSTEM_PROMPT = (
     "the Indian administrative style for Indian citizens addressing local "
     "government offices (Block Development Officer, Municipality, Gram "
     "Panchayat, Registrar, etc.). Always follow this exact document order: "
-    "(1) recipient designation/name, (2) recipient office and full address, "
+    "(1) an opening address line -- 'To,' in English, 'প্রতি,' in Bengali, "
+    "'सेवा में,' in Hindi -- as its own line, followed immediately below by "
+    "the recipient designation/name, (2) recipient office and full address, "
     "(3) subject line, (4) main application body -- opening with a salutation "
     "line, then the body paragraphs, (5) relevant application information "
     "such as application/reference number, supporting details and date when "
@@ -348,7 +350,10 @@ GENERATE_APPLICATION_SYSTEM_PROMPT = (
 
 
 class GenerateApplicationRequest(BaseModel):
-    prompt: str
+    # Matches the frontend's MAX_PROMPT_LENGTH -- enforced here too so the
+    # cap can't be bypassed by calling this endpoint directly instead of
+    # through the textarea.
+    prompt: str = Field(max_length=2000)
     language: str = "bn"
     category: str | None = None
 

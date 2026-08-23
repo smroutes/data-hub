@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import {
-  Copy,
   FolderOpen,
   Lightbulb,
   Loader2,
@@ -37,6 +36,11 @@ const PROMPT_PLACEHOLDER: Record<Language, string> = {
   hi: "उदाहरण: मैं जन्म प्रमाण पत्र के लिए नगर पालिका में आवेदन करना चाहता हूँ, जिसमें मेरा नाम, पता, जन्म तिथि और पिता का नाम शामिल हो।",
 }
 
+// Caps how much text a single request can send to the (paid, per-token)
+// generation API -- also enforced server-side in GenerateApplicationRequest
+// so this can't be bypassed by calling the API directly.
+const MAX_PROMPT_LENGTH = 2000
+
 const CATEGORIES = [
   "Identity Documents",
   "Financial Assistance",
@@ -54,7 +58,6 @@ export function AIApplicationWriter() {
   const [category, setCategory] = useState("")
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState("")
-  const [copied, setCopied] = useState(false)
   const [suggestion, setSuggestion] = useState("")
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Plate's `value` is only read once at construction -- bumping this key
@@ -124,14 +127,6 @@ export function AIApplicationWriter() {
     setResult("")
   }
 
-  async function handleCopy() {
-    const markdown = editorRef.current?.getMarkdown() ?? result
-    if (!markdown.trim()) return
-    await navigator.clipboard.writeText(markdown)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
   function handlePrint() {
     // Empty-check via getMarkdown() (a real semantic serialization) rather
     // than getHtml(), since Plate's rendered DOM still has wrapper markup
@@ -192,18 +187,30 @@ export function AIApplicationWriter() {
                 </div>
                 <Textarea
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  onChange={(e) => setPrompt(e.target.value.slice(0, MAX_PROMPT_LENGTH))}
                   onKeyDown={handlePromptKeyDown}
                   placeholder={PROMPT_PLACEHOLDER[language]}
+                  maxLength={MAX_PROMPT_LENGTH}
                   className="relative min-h-40 resize-none"
                 />
               </div>
-              {suggestion && (
-                <p className="-mt-2 text-xs text-muted-foreground">
-                  Press <kbd className="rounded border bg-muted px-1 py-0.5 font-sans">Tab</kbd> to accept the
-                  suggestion.
-                </p>
-              )}
+              <div className="-mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                {suggestion ? (
+                  <p>
+                    Press <kbd className="rounded border bg-muted px-1 py-0.5 font-sans">Tab</kbd> to accept the
+                    suggestion.
+                  </p>
+                ) : (
+                  <span />
+                )}
+                <span
+                  className={cn(
+                    prompt.length >= MAX_PROMPT_LENGTH && "font-medium text-red-600 dark:text-red-400"
+                  )}
+                >
+                  {prompt.length} / {MAX_PROMPT_LENGTH}
+                </span>
+              </div>
 
               <div className="flex flex-wrap gap-2">
                 {LANGUAGES.map((lang) => (
@@ -273,10 +280,6 @@ export function AIApplicationWriter() {
                   AI Generated Application
                 </CardTitle>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCopy} disabled={generating}>
-                    <Copy className="size-3.5" />
-                    {copied ? "Copied" : "Copy"}
-                  </Button>
                   <Button variant="outline" size="sm" onClick={handlePrint} disabled={generating}>
                     <Printer className="size-3.5" />
                     Print
