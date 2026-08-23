@@ -334,6 +334,12 @@ GENERATE_APPLICATION_SYSTEM_PROMPT = (
     "gave, or support the specific action the user asked for -- keep the "
     "letter concise; do not pad it to seem longer or more thorough. "
     f"{INJECTION_GUARD} "
+    "If the request is not a legitimate Indian government application to "
+    "write -- e.g. it asks you to write code, answer an unrelated question, "
+    "act as a different kind of assistant, or has no discernible "
+    "application purpose at all -- do not explain yourself or write "
+    "anything else. Output exactly one line: 'UNSUPPORTED_REQUEST: ' "
+    "followed by a short reason in English, and nothing else. "
     "Output only the completed letter itself, formatted as Markdown as "
     "described above -- no commentary, explanation, or title before or "
     "after the letter, and no headings, bullet points, numbered lists, or "
@@ -387,6 +393,15 @@ def generate_application(body: GenerateApplicationRequest):
     text = (completion.choices[0].message.content or "").strip()
     if not text:
         raise HTTPException(status_code=502, detail="AI generation returned no content")
+    # The model is instructed to emit this exact sentinel instead of a
+    # natural-language refusal when the request isn't a legitimate
+    # application to write (off-topic, a code request, a jailbreak
+    # attempt, etc.) -- surfaced as a real error (toast on the frontend)
+    # rather than a 200 whose "application" text would otherwise get
+    # rendered straight into the editor canvas as if it were a real letter.
+    if text.startswith("UNSUPPORTED_REQUEST:"):
+        reason = text.removeprefix("UNSUPPORTED_REQUEST:").strip()
+        raise HTTPException(status_code=422, detail=reason or "This doesn't look like a government application request.")
     return {"application": text}
 
 
