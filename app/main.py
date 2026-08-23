@@ -437,15 +437,25 @@ def generate_application(body: GenerateApplicationRequest):
         # DeepSeek's reasoning models spend a variable, sometimes large,
         # chunk of max_tokens on internal reasoning_content before writing
         # the actual letter -- reasoning_effort is accepted but silently
-        # ignored (no error, no reduction), so the only reliable fix is
-        # enough headroom that reasoning can never fully consume the budget
-        # and leave zero tokens for the letter itself (seen live: 1539
-        # reasoning tokens against this system prompt, out of a 3000 cap).
+        # ignored (no error, no reduction). Headroom (max_tokens=6000)
+        # covers most requests, but a reasoning run can still occasionally
+        # consume the entire budget and leave nothing for the letter
+        # itself -- seen live on a mixed Bengali/English "on behalf of my
+        # relative" prompt: 6000/6000 tokens spent reasoning,
+        # finish_reason "length", zero content. No amount of extra
+        # max_tokens headroom can fully rule this out for a reasoning
+        # model, so rather than surfacing a 502 for a request that has a
+        # perfectly answerable letter, fall back once to "deepseek-chat" --
+        # a plain (non-reasoning) DeepSeek model with no reasoning-budget
+        # risk at all -- so the user gets a real letter instead of an error.
         completion = client.chat.completions.create(model=DEEPSEEK_MODEL, messages=messages, max_tokens=6000)
+        text = (completion.choices[0].message.content or "").strip()
+        if not text:
+            completion = client.chat.completions.create(model="deepseek-chat", messages=messages, max_tokens=3000)
+            text = (completion.choices[0].message.content or "").strip()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
 
-    text = (completion.choices[0].message.content or "").strip()
     if not text:
         raise HTTPException(status_code=502, detail="AI generation returned no content")
     # The model is instructed to emit this exact sentinel instead of a
