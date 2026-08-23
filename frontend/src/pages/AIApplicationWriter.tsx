@@ -87,6 +87,11 @@ export function AIApplicationWriter() {
 
   async function handleGenerate() {
     if (!prompt.trim() || generating) return
+    // Otherwise the ghost-text suggestion (and its ready-to-accept hint)
+    // stays visible over the prompt while/after generating, which reads as
+    // unfinished/broken even though generation is already underway.
+    if (suggestTimer.current) clearTimeout(suggestTimer.current)
+    setSuggestion("")
     setGenerating(true)
     setResult("")
     setError("")
