@@ -13,9 +13,9 @@ import { TableKit } from "@/components/editor/plugins/table-kit"
 import { EmojiKit } from "@/components/editor/plugins/emoji-kit"
 import { FixedToolbarKit } from "@/components/editor/plugins/fixed-toolbar-kit"
 import { PrintStaticKit } from "@/components/editor/plugins/print-static-kit"
-import { TransliterationKit } from "@/components/editor/plugins/transliteration-kit"
-import type { TransliterationLanguage } from "@/components/editor/plugins/transliteration-kit"
 import { Editor, EditorContainer } from "@/components/ui/editor"
+import { BengaliSuggestionPopup } from "@/components/editor/BengaliSuggestionPopup"
+import { useBengaliSuggestions } from "@/hooks/use-bengali-suggestions"
 
 // ListKit already brings in indent support (needed by both lists and the
 // Indent/Outdent toolbar buttons), so it's not listed separately here.
@@ -29,7 +29,6 @@ const PLUGINS = [
   ...TableKit,
   ...EmojiKit,
   MarkdownPlugin,
-  ...TransliterationKit,
   ...FixedToolbarKit,
 ]
 
@@ -50,6 +49,8 @@ export interface ApplicationEditorHandle {
   getPrintHtml: () => Promise<string>
 }
 
+type Language = "bn" | "en" | "hi"
+
 // Remount this component (via a `key` prop keyed to the generation, e.g. a
 // counter bumped on each successful Generate) to load new AI output --
 // Plate's `value` is only consulted once, at editor construction. Also
@@ -57,51 +58,77 @@ export interface ApplicationEditorHandle {
 // without generating anything first.
 export const ApplicationEditor = forwardRef<
   ApplicationEditorHandle,
-  { initialMarkdown: string; language: TransliterationLanguage }
+  { initialMarkdown: string; language: Language }
 >(function ApplicationEditor({ initialMarkdown, language }, ref) {
-    const editor = usePlateEditor({
-      plugins: PLUGINS,
-      value: initialMarkdown.trim()
-        ? (editor) => editor.getApi(MarkdownPlugin).markdown.deserialize(initialMarkdown)
-        : undefined,
-    })
+  const editor = usePlateEditor({
+    plugins: PLUGINS,
+    value: initialMarkdown.trim()
+      ? (editor) => editor.getApi(MarkdownPlugin).markdown.deserialize(initialMarkdown)
+      : undefined,
+  })
 
-    // Reactive, not baked into PLUGINS -- the language pill can change
-    // while someone is writing by hand in the always-mounted blank canvas
-    // (no generation, so no remount to pick up a new value otherwise).
-    // The plugin must be passed as { key } here, not the bare string
-    // "transliteration" -- editor.setOption silently no-ops (and later
-    // reads back undefined) with a bare string despite Plate's own docs
-    // showing that form; confirmed by direct testing.
-    useEffect(() => {
-      editor.setOption({ key: "transliteration" }, "language", language)
-    }, [editor, language])
+  const { suggestions, selectedIndex, setSelectedIndex, active, onUpdate, acceptSuggestion, clear } =
+    useBengaliSuggestions(editor)
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        getMarkdown: () => editor.api.markdown.serialize(),
-        getPrintHtml: async () => {
-          const staticEditor = createSlateEditor({
-            plugins: PrintStaticKit,
-            value: editor.children,
-          })
-          return serializeHtml(staticEditor)
-        },
-      }),
-      [editor]
-    )
+  // Dismiss any pending suggestion state immediately on switching away from
+  // Bengali -- otherwise it lingers until the next edit (onChange is the
+  // only other place this clears, and a language-pill click alone doesn't
+  // fire it).
+  useEffect(() => {
+    if (language !== "bn") clear()
+  }, [language, clear])
 
-    return (
-      <Plate editor={editor}>
-        <EditorContainer className="h-full">
-          <Editor
-            variant="none"
-            className="min-h-[36rem] px-4 py-3 text-sm"
-            placeholder="Start writing, or describe what you need on the left and click Generate Application."
-          />
-        </EditorContainer>
-      </Plate>
-    )
-  }
-)
+  useImperativeHandle(
+    ref,
+    () => ({
+      getMarkdown: () => editor.api.markdown.serialize(),
+      getPrintHtml: async () => {
+        const staticEditor = createSlateEditor({
+          plugins: PrintStaticKit,
+          value: editor.children,
+        })
+        return serializeHtml(staticEditor)
+      },
+    }),
+    [editor]
+  )
+
+  return (
+    <Plate editor={editor} onChange={() => language === "bn" && onUpdate()}>
+      <EditorContainer className="h-full">
+        <Editor
+          variant="none"
+          className="min-h-[36rem] px-4 py-3 text-sm"
+          placeholder="Start writing, or describe what you need on the left and click Generate Application."
+          onKeyDown={(e) => {
+            if (language !== "bn" || !active || suggestions.length === 0) return
+            if (e.key === "ArrowDown") {
+              e.preventDefault()
+              setSelectedIndex((i) => Math.min(i + 1, suggestions.length - 1))
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault()
+              setSelectedIndex((i) => Math.max(i - 1, 0))
+            } else if (e.key === "Enter" || e.key === "Tab") {
+              e.preventDefault()
+              acceptSuggestion(selectedIndex)
+            } else if (e.key === " ") {
+              e.preventDefault()
+              acceptSuggestion(selectedIndex, " ")
+            } else if (e.key === "Escape") {
+              e.preventDefault()
+              clear()
+            }
+          }}
+        />
+      </EditorContainer>
+      {language === "bn" && (
+        <BengaliSuggestionPopup
+          suggestions={suggestions}
+          selectedIndex={selectedIndex}
+          onSelect={(i) => acceptSuggestion(i)}
+          onHover={setSelectedIndex}
+        />
+      )}
+    </Plate>
+  )
+})
