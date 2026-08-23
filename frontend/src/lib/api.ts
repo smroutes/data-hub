@@ -14,3 +14,21 @@ export async function searchRecords(
   }
   return res.json()
 }
+
+export async function generateApplication(
+  prompt: string,
+  language: string,
+  category: string | null
+): Promise<string> {
+  const res = await fetch("/api/generate-application", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, language, category }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || `Request failed (${res.status})`)
+  }
+  const data = (await res.json()) as { application: string }
+  return data.application
+}

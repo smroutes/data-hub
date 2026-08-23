@@ -3,6 +3,8 @@ import os
 
 import duckdb
 from fastapi import FastAPI, HTTPException, Request
+from openai import OpenAI
+from pydantic import BaseModel
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 CACHE_DIR = os.environ.get("CACHE_DIR", "/app/cache")
@@ -11,6 +13,30 @@ R2_BUCKET = os.environ.get("R2_BUCKET")
 R2_ENDPOINT = os.environ.get("R2_ENDPOINT")  # https://<account_id>.r2.cloudflarestorage.com
 R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
 R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
+
+# DeepSeek's API is OpenAI-compatible, so the official openai package works
+# unmodified against it -- just point base_url at DeepSeek and use one of
+# its model names instead of OpenAI's. Swapping providers later (or back to
+# real OpenAI) only needs these two values changed, not the call site.
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") or None
+# `or` (not dict.get's default) because docker-compose sets these to an
+# empty string, not unset, when left blank in .env -- a plain default
+# would never kick in against "".
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL") or "deepseek-chat"
+
+# Constructed lazily (not at import time) so a missing key only breaks the
+# one endpoint that needs it, not the whole app -- search/health keep working.
+_ai_client: OpenAI | None = None
+
+
+def get_ai_client() -> OpenAI:
+    global _ai_client
+    if not DEEPSEEK_API_KEY:
+        raise HTTPException(status_code=503, detail="AI writer is not configured (DEEPSEEK_API_KEY missing)")
+    if _ai_client is None:
+        _ai_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+    return _ai_client
 
 # Add an entry here for each searchable dataset. r2_env names the env var
 # holding that dataset's object key in R2_BUCKET; local_glob is the fallback
@@ -160,3 +186,54 @@ def health():
     if missing:
         raise HTTPException(status_code=503, detail=f"datasets not loaded: {missing}")
     return {"status": "ok"}
+
+
+# Language codes match the frontend's AI Application Writer page exactly
+# (bn/en/hi) -- kept as a small closed set rather than a free-text field so
+# a prompt-injection attempt in the user's own text can't also smuggle in
+# an instruction to answer in some other language.
+LANGUAGE_NAMES = {"bn": "Bengali", "en": "English", "hi": "Hindi"}
+
+
+class GenerateApplicationRequest(BaseModel):
+    prompt: str
+    language: str = "bn"
+    category: str | None = None
+
+
+@app.post("/api/generate-application")
+def generate_application(body: GenerateApplicationRequest):
+    prompt = body.prompt.strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+    language_name = LANGUAGE_NAMES.get(body.language, LANGUAGE_NAMES["bn"])
+
+    system_prompt = (
+        "You write formal, ready-to-submit government application letters for "
+        "Indian citizens applying to local municipal/government offices. "
+        f"Write entirely in {language_name}. Use a respectful, formal tone with a "
+        "clear subject line, salutation, body, and closing. Where a specific "
+        "detail (name, address, date, etc.) is not given in the request, leave "
+        "a bracketed placeholder like [Your Name] instead of inventing one. "
+        "Output only the letter itself -- no commentary before or after it."
+    )
+    user_prompt = prompt
+    if body.category:
+        user_prompt = f"Application type: {body.category}\n\n{prompt}"
+
+    client = get_ai_client()
+    try:
+        completion = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
+
+    text = (completion.choices[0].message.content or "").strip()
+    if not text:
+        raise HTTPException(status_code=502, detail="AI generation returned no content")
+    return {"application": text}

@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
+import { generateApplication } from "@/lib/api"
 
 type Language = "bn" | "en" | "hi"
 
@@ -43,39 +44,6 @@ const CATEGORIES = [
   "Food & Supply",
 ]
 
-// Phase 1 is UI-only -- there's no AI backend wired up yet, so Generate
-// fills the canvas with a fixed sample so the layout/flow can be reviewed.
-// Real generation (and making the canvas editable) is later work.
-const SAMPLE_RESULT = `জন্ম সার্টিফিকেটের জন্য আবেদনপত্র
-
-প্রতি,
-মাননীয় পৌরসভা কর্তৃপক্ষ,
-[আপনার পৌরসভার নাম]
-[পৌরসভার ঠিকানা]
-
-বিষয়: জন্ম সার্টিফিকেট প্রদানের জন্য আবেদন।
-
-জনাব,
-বিনীত নিবেদন এই যে, আমি নিম্নস্বাক্ষরকারী আমার জন্ম সার্টিফিকেটের জন্য আবেদন জানাচ্ছি।
-আমার ব্যক্তিগত তথ্য নিম্নরূপ:
-
-- আবেদনকারীর নাম: [আপনার নাম]
-- পিতার নাম: [পিতার নাম]
-- মাতার নাম: [মাতার নাম]
-- জন্ম তারিখ: [জন্ম তারিখ]
-- জন্ম স্থান: [জন্ম স্থান]
-- বর্তমান ঠিকানা: [সম্পূর্ণ ঠিকানা]
-
-অতএব, মহাশয়ের নিকট বিনীত অনুরোধ, আমার আবেদনটি বিবেচনা করে দ্রুত আমাকে জন্ম সার্টিফিকেট প্রদান করার জন্য অনুরোধ জানাচ্ছি।
-
-ধন্যবাদান্তে,
-[আপনার নাম]
-[যোগাযোগ নম্বর]
-[তারিখ]
-
----
-*উল্লেখ্য: প্রয়োজনীয় কাগজপত্র সংযুক্ত করতে হবে।`
-
 export function AIApplicationWriter() {
   useDocumentTitle("AI Application Writer")
   const [prompt, setPrompt] = useState("")
@@ -83,24 +51,29 @@ export function AIApplicationWriter() {
   const [category, setCategory] = useState("")
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState("")
+  const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
 
-  function handleGenerate() {
+  async function handleGenerate() {
     if (!prompt.trim() || generating) return
     setGenerating(true)
     setResult("")
-    // Fake latency so the loading state is visible -- swap for a real API
-    // call once the AI backend exists.
-    setTimeout(() => {
-      setResult(SAMPLE_RESULT)
+    setError("")
+    try {
+      const text = await generateApplication(prompt.trim(), language, category || null)
+      setResult(text)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate application.")
+    } finally {
       setGenerating(false)
-    }, 900)
+    }
   }
 
   function handleClear() {
     setPrompt("")
     setCategory("")
     setResult("")
+    setError("")
   }
 
   async function handleCopy() {
@@ -254,6 +227,11 @@ export function AIApplicationWriter() {
                   <div className="flex h-full min-h-84 flex-col items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="size-6 animate-spin" />
                     <p>Generating your application...</p>
+                  </div>
+                ) : error ? (
+                  <div className="flex h-full min-h-84 flex-col items-center justify-center gap-2 text-center text-red-600 dark:text-red-400">
+                    <FileText className="size-8" />
+                    <p>{error}</p>
                   </div>
                 ) : result ? (
                   result
