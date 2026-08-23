@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/sonner"
 import { Header } from "@/components/Header"
 import { SearchPage } from "@/components/SearchPage"
 import { Footer } from "@/components/Footer"
@@ -36,6 +37,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <TooltipProvider delayDuration={300}>
+          <Toaster />
           <SessionExpiredModal />
           <NameRequiredModal />
           <Routes>

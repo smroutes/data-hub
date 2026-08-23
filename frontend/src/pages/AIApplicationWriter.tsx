@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
+import { toast } from "sonner"
 import {
   Copy,
   Download,
@@ -52,7 +53,6 @@ export function AIApplicationWriter() {
   const [category, setCategory] = useState("")
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState("")
-  const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
   const [suggestion, setSuggestion] = useState("")
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -100,13 +100,12 @@ export function AIApplicationWriter() {
     setSuggestion("")
     setGenerating(true)
     setResult("")
-    setError("")
     try {
       const text = await generateApplication(prompt.trim(), language, category || null)
       setResult(text)
       setResultVersion((v) => v + 1)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate application.")
+      toast.error(err instanceof Error ? err.message : "Failed to generate application.")
     } finally {
       setGenerating(false)
     }
@@ -116,7 +115,6 @@ export function AIApplicationWriter() {
     setPrompt("")
     setCategory("")
     setResult("")
-    setError("")
   }
 
   async function handleCopy() {
@@ -288,9 +286,6 @@ export function AIApplicationWriter() {
                 </div>
               </div>
             </CardHeader>
-            {error && (
-              <p className="border-t px-4 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>
-            )}
             <CardContent className="relative p-0">
               {generating && (
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-b-xl bg-white/85 backdrop-blur-sm">
