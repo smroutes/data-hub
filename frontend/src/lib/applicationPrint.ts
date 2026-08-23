@@ -41,8 +41,27 @@ function printTitle(application: Application): string {
 function buildLetterHtml(application: Application): string {
   const block = filled(application.block)
 
-  const field = (label: string, value: string) =>
-    `<p class="field"><span class="bold">${escapeHtml(label)}</span> ${escapeHtml(value)}</p>`
+  // Standalone fields (Application ID, Aadhaar, etc.) -- omit the whole
+  // line when empty instead of printing a "________" placeholder for it.
+  // Name/Address/Block still fall back to a blank line via filled() since
+  // they're load-bearing parts of the letter's sentence structure and
+  // can't just be dropped, but those are now required at data-entry time
+  // anyway (see ApplicationForm.tsx) so this mostly only matters for
+  // records saved before that requirement existed.
+  const field = (label: string, value: string | null | undefined) => {
+    const trimmed = (value ?? "").trim()
+    if (!trimmed) return ""
+    return `<p class="field"><span class="bold">${escapeHtml(label)}</span> ${escapeHtml(trimmed)}</p>`
+  }
+
+  // Same omit-if-empty treatment for the "পিতা/স্বামী" clause -- it's
+  // optional on the form, so drop the whole ", পিতা/স্বামী X" segment
+  // rather than leaving a "পিতা/স্বামী ________" placeholder in the
+  // middle of the sentence.
+  const relativeName = (application.relative_name ?? "").trim()
+  const relativeNameClause = relativeName
+    ? `, পিতা/স্বামী <span class="bold">${escapeHtml(relativeName)}</span>`
+    : ""
 
   return `<!doctype html>
 <html>
@@ -73,9 +92,7 @@ function buildLetterHtml(application: Application): string {
 
   <p class="justify">বিনীতভাবে জানাচ্ছি যে, আমি <span class="bold">${escapeHtml(
     filled(application.name)
-  )}</span>, পিতা/স্বামী <span class="bold">${escapeHtml(
-    filled(application.relative_name)
-  )}</span>, <span class="bold">${escapeHtml(
+  )}</span>${relativeNameClause}, <span class="bold">${escapeHtml(
     filled(application.address)
   )} -এর একজন বাসিন্দা।</span> আমি অন্নপূর্ণা যোজনার সুবিধা পাওয়ার জন্য আবেদন করেছি এবং উক্ত যোজনার নির্ধারিত যোগ্যতার ভিত্তিতে নিজেকে একজন উপযুক্ত আবেদনকারী বলে মনে করি।</p>
 
@@ -85,11 +102,11 @@ function buildLetterHtml(application: Application): string {
 
   <p class="justify" style="margin-bottom: 14pt;">এ বিষয়ে সদয় বিবেচনা করে প্রয়োজনীয় ব্যবস্থা গ্রহণ করলে আমি আপনার নিকট চিরকৃতজ্ঞ থাকব।</p>
 
-  ${field("Application ID:", filled(application.application_number))}
-  ${field("Aadhaar No.:", filled(application.aadhaar_number))}
-  ${field("Voter Card / EPIC:", filled(application.voter_number))}
-  ${field("Mobile No.:", filled(application.mobile_number))}
-  ${field("Remarks:", filled(application.remarks))}
+  ${field("Application ID:", application.application_number)}
+  ${field("Aadhaar No.:", application.aadhaar_number)}
+  ${field("Voter Card / EPIC:", application.voter_number)}
+  ${field("Mobile No.:", application.mobile_number)}
+  ${field("Remarks:", application.remarks)}
   <p class="field" style="margin-bottom: 20pt;"><span class="bold">Date:</span> ${escapeHtml(submissionDate(application))}</p>
 
   <p style="text-align: right;">ধন্যবাদান্তে,</p>
