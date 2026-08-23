@@ -124,7 +124,7 @@ export function AIApplicationWriter() {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <Header />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
