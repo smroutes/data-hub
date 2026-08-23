@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle } from "react"
+import { forwardRef, useEffect, useImperativeHandle } from "react"
 import { createSlateEditor } from "platejs"
 import { serializeHtml } from "platejs/static"
 import { Plate, usePlateEditor } from "platejs/react"
@@ -13,6 +13,8 @@ import { TableKit } from "@/components/editor/plugins/table-kit"
 import { EmojiKit } from "@/components/editor/plugins/emoji-kit"
 import { FixedToolbarKit } from "@/components/editor/plugins/fixed-toolbar-kit"
 import { PrintStaticKit } from "@/components/editor/plugins/print-static-kit"
+import { TransliterationKit } from "@/components/editor/plugins/transliteration-kit"
+import type { TransliterationLanguage } from "@/components/editor/plugins/transliteration-kit"
 import { Editor, EditorContainer } from "@/components/ui/editor"
 
 // ListKit already brings in indent support (needed by both lists and the
@@ -27,6 +29,7 @@ const PLUGINS = [
   ...TableKit,
   ...EmojiKit,
   MarkdownPlugin,
+  ...TransliterationKit,
   ...FixedToolbarKit,
 ]
 
@@ -52,14 +55,28 @@ export interface ApplicationEditorHandle {
 // Plate's `value` is only consulted once, at editor construction. Also
 // used with an empty initialMarkdown so someone can start writing by hand
 // without generating anything first.
-export const ApplicationEditor = forwardRef<ApplicationEditorHandle, { initialMarkdown: string }>(
-  function ApplicationEditor({ initialMarkdown }, ref) {
+export const ApplicationEditor = forwardRef<
+  ApplicationEditorHandle,
+  { initialMarkdown: string; language: TransliterationLanguage }
+>(function ApplicationEditor({ initialMarkdown, language }, ref) {
     const editor = usePlateEditor({
       plugins: PLUGINS,
       value: initialMarkdown.trim()
         ? (editor) => editor.getApi(MarkdownPlugin).markdown.deserialize(initialMarkdown)
         : undefined,
     })
+
+    // Reactive, not baked into PLUGINS -- the language pill can change
+    // while someone is writing by hand in the always-mounted blank canvas
+    // (no generation, so no remount to pick up a new value otherwise).
+    // The plugin must be passed as { key } here, not the bare string
+    // "transliteration" -- editor.setOption silently no-ops (and later
+    // reads back undefined) with a bare string despite Plate's own docs
+    // showing that form; confirmed by direct testing.
+    useEffect(() => {
+      editor.setOption({ key: "transliteration" }, "language", language)
+    }, [editor, language])
+
     useImperativeHandle(
       ref,
       () => ({

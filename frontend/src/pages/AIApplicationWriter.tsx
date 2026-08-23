@@ -311,7 +311,7 @@ export function AIApplicationWriter() {
                   ApplicationEditor for why (Plate's initial value isn't
                   re-read on prop changes). */}
               <div className="min-h-[36rem] rounded-b-xl bg-white text-neutral-900">
-                <ApplicationEditor key={resultVersion} ref={editorRef} initialMarkdown={result} />
+                <ApplicationEditor key={resultVersion} ref={editorRef} initialMarkdown={result} language={language} />
               </div>
             </CardContent>
           </Card>
