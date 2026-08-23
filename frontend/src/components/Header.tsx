@@ -59,10 +59,10 @@ export function Header() {
           <span className="text-lg font-semibold tracking-tight text-foreground">
             DataHub
           </span>
-          {/* Bengali subtitle takes real width and isn't essential once the
-              header has to compete with nav + account controls on a phone. */}
-          <span className="hidden h-8 w-px bg-border sm:block" />
-          <div className="hidden flex-col justify-center sm:flex">
+          {/* Same branding block on every screen size, matching the
+              desktop layout -- no longer hidden on mobile. */}
+          <span className="h-8 w-px shrink-0 bg-border" />
+          <div className="flex flex-col justify-center">
             <span className="text-xs leading-tight font-medium text-foreground">
               পান্ডবেশ্বর
             </span>
