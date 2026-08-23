@@ -98,9 +98,25 @@ export const ApplicationEditor = forwardRef<
       <EditorContainer className="h-full">
         <Editor
           variant="none"
-          className="min-h-[36rem] px-4 py-3 text-sm"
+          className="min-h-[44rem] px-4 py-3 text-base"
           placeholder="Start writing, or describe what you need on the left and click Generate Application."
           onKeyDown={(e) => {
+            // Bengali full stop ("।", purnochched) -- typed as a plain "."
+            // like every other Avro-based tool, but a period has no
+            // ambiguity worth a suggestion popup, so it converts directly
+            // instead of going through the candidate-list flow. If a word
+            // is still mid-suggestion, "." finalizes it first (same as
+            // space today) rather than leaving it stranded as romanized
+            // text.
+            if (language === "bn" && e.key === ".") {
+              e.preventDefault()
+              if (active && suggestions.length > 0) {
+                acceptSuggestion(selectedIndex, "।")
+              } else {
+                editor.insertText("।")
+              }
+              return
+            }
             if (language !== "bn" || !active || suggestions.length === 0) return
             if (e.key === "ArrowDown") {
               e.preventDefault()
