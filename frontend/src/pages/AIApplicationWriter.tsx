@@ -27,6 +27,12 @@ const LANGUAGES: { value: Language; label: string }[] = [
   { value: "hi", label: "हिंदी" },
 ]
 
+const PROMPT_PLACEHOLDER: Record<Language, string> = {
+  bn: "যেমন: আমি জন্ম সার্টিফিকেটের জন্য পৌরসভায় আবেদন করতে আমার নাম, ঠিকানা, জন্ম তারিখ, পিতার নাম উল্লেখ থাকবে।",
+  en: "e.g. I want to apply for a birth certificate at the municipality, mentioning my name, address, date of birth, and father's name.",
+  hi: "उदाहरण: मैं जन्म प्रमाण पत्र के लिए नगर पालिका में आवेदन करना चाहता हूँ, जिसमें मेरा नाम, पता, जन्म तिथि और पिता का नाम शामिल हो।",
+}
+
 const CATEGORIES = [
   "Identity Documents",
   "Financial Assistance",
@@ -151,7 +157,7 @@ export function AIApplicationWriter() {
               <Textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="যেমন: আমি জন্ম সার্টিফিকেটের জন্য পৌরসভায় আবেদন করতে আমার নাম, ঠিকানা, জন্ম তারিখ, পিতার নাম উল্লেখ থাকবে।"
+                placeholder={PROMPT_PLACEHOLDER[language]}
                 className="min-h-40 resize-none"
               />
 
