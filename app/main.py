@@ -14,29 +14,41 @@ R2_ENDPOINT = os.environ.get("R2_ENDPOINT")  # https://<account_id>.r2.cloudflar
 R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
 R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
 
-# DeepSeek's API is OpenAI-compatible, so the official openai package works
-# unmodified against it -- just point base_url at DeepSeek and use one of
-# its model names instead of OpenAI's. Swapping providers later (or back to
-# real OpenAI) only needs these two values changed, not the call site.
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") or None
+# Both DeepSeek and Groq expose OpenAI-compatible APIs, so the official
+# openai package works unmodified against either -- just point base_url at
+# the provider and use one of its model names instead of OpenAI's.
+#
+# Two separate providers on purpose: DeepSeek writes the actual application
+# (quality matters, fires once per Generate click); Groq's free tier drives
+# prompt auto-suggest (fires much more often while typing, speed/cost
+# matters more than quality there).
+#
 # `or` (not dict.get's default) because docker-compose sets these to an
 # empty string, not unset, when left blank in .env -- a plain default
 # would never kick in against "".
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") or None
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL") or "deepseek-chat"
 
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY") or None
+GROQ_BASE_URL = os.environ.get("GROQ_BASE_URL") or "https://api.groq.com/openai/v1"
+GROQ_MODEL = os.environ.get("GROQ_MODEL") or "llama-3.1-8b-instant"
+
 # Constructed lazily (not at import time) so a missing key only breaks the
-# one endpoint that needs it, not the whole app -- search/health keep working.
-_ai_client: OpenAI | None = None
+# endpoints that need it, not the whole app -- search/health keep working.
+_client_cache: dict[str, OpenAI] = {}
 
 
-def get_ai_client() -> OpenAI:
-    global _ai_client
-    if not DEEPSEEK_API_KEY:
-        raise HTTPException(status_code=503, detail="AI writer is not configured (DEEPSEEK_API_KEY missing)")
-    if _ai_client is None:
-        _ai_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
-    return _ai_client
+def get_ai_client(provider: str) -> OpenAI:
+    api_key, base_url, env_name = {
+        "deepseek": (DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, "DEEPSEEK_API_KEY"),
+        "groq": (GROQ_API_KEY, GROQ_BASE_URL, "GROQ_API_KEY"),
+    }[provider]
+    if not api_key:
+        raise HTTPException(status_code=503, detail=f"AI writer is not configured ({env_name} missing)")
+    if provider not in _client_cache:
+        _client_cache[provider] = OpenAI(api_key=api_key, base_url=base_url)
+    return _client_cache[provider]
 
 # Add an entry here for each searchable dataset. r2_env names the env var
 # holding that dataset's object key in R2_BUCKET; local_glob is the fallback
@@ -221,7 +233,7 @@ def generate_application(body: GenerateApplicationRequest):
     if body.category:
         user_prompt = f"Application type: {body.category}\n\n{prompt}"
 
-    client = get_ai_client()
+    client = get_ai_client("deepseek")
     try:
         completion = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
