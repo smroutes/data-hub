@@ -1,4 +1,22 @@
 import { printHtml } from "@/lib/printHtml"
+// ?inline forces Vite to base64-inline these regardless of size (its
+// default assetsInlineLimit is 4kb; these are ~45kb each) -- self-hosting
+// the font directly in the print document, rather than naming a system
+// font by name and hoping it's installed, is what actually guarantees
+// consistent rendering. Named system fonts ("Nirmala UI", "Vrinda") are
+// Windows-only and silently fall back to whatever the OS substitutes when
+// missing (e.g. nothing Bengali-capable on this Mac); a fallback font
+// without proper Bengali shaping rules can render a dependent vowel sign
+// (e.g. the "ে" in "হবে") incorrectly or drop it visually, even though the
+// underlying text is untouched -- confirmed by comparing canvas vs. print
+// text content directly (byte-identical) rather than assuming the visual
+// difference meant real data loss.
+import notoBengaliRegular from "@/assets/fonts/noto-sans-bengali-400.woff2?inline"
+import notoBengaliBold from "@/assets/fonts/noto-sans-bengali-700.woff2?inline"
+// Noto Sans Bengali doesn't cover Devanagari (Hindi) -- separate family,
+// same self-hosting reasoning.
+import notoDevanagariRegular from "@/assets/fonts/noto-sans-devanagari-400.woff2?inline"
+import notoDevanagariBold from "@/assets/fonts/noto-sans-devanagari-700.woff2?inline"
 
 function escapeHtml(text: string): string {
   return text
@@ -28,9 +46,33 @@ export function printEditorContent(bodyHtml: string, title: string): void {
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
 <style>
+  @font-face {
+    font-family: "Noto Sans Bengali";
+    src: url("${notoBengaliRegular}") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "Noto Sans Bengali";
+    src: url("${notoBengaliBold}") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "Noto Sans Devanagari";
+    src: url("${notoDevanagariRegular}") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "Noto Sans Devanagari";
+    src: url("${notoDevanagariBold}") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+  }
   @page { margin: 0.7in 0.9in; }
   body {
-    font-family: "Nirmala UI", "Vrinda", "Noto Sans Bengali", Arial, sans-serif;
+    font-family: "Noto Sans Bengali", "Noto Sans Devanagari", Arial, sans-serif;
     font-size: 14.5pt;
     line-height: 1.7;
     color: #000;
