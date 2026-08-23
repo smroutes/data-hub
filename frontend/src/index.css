@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "tailwind-scrollbar-hide";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -23,6 +24,7 @@
   /* bhagwa (saffron) brand color */
   --brand: #ff9933;
   --brand-foreground: #ffffff;
+  --highlight: oklch(0.852 0.199 91.936);
 }
 
 .dark {
@@ -44,6 +46,7 @@
 
   --brand: #ff9933;
   --brand-foreground: #1a1200;
+  --highlight: oklch(0.852 0.199 91.936);
 }
 
 @theme inline {
@@ -67,6 +70,7 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+  --color-highlight: var(--highlight);
 }
 
 @layer base {

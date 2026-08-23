@@ -3,7 +3,6 @@ import { Link } from "react-router-dom"
 import {
   Copy,
   Download,
-  FileText,
   FolderOpen,
   Lightbulb,
   Loader2,
@@ -16,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
+import { ApplicationEditor } from "@/components/editor/ApplicationEditor"
+import type { ApplicationEditorHandle } from "@/components/editor/ApplicationEditor"
 import { cn } from "@/lib/utils"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import { generateApplication, suggestPrompt } from "@/lib/api"
@@ -55,6 +56,11 @@ export function AIApplicationWriter() {
   const [copied, setCopied] = useState(false)
   const [suggestion, setSuggestion] = useState("")
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Plate's `value` is only read once at construction -- bumping this key
+  // forces the editor to remount (and re-deserialize) on each new
+  // generation, rather than trying to sync an uncontrolled editor.
+  const [resultVersion, setResultVersion] = useState(0)
+  const editorRef = useRef<ApplicationEditorHandle>(null)
 
   // Debounced ghost-text autocomplete (Groq) -- clears immediately on any
   // edit so a stale suggestion never lingers against changed text, then
@@ -98,6 +104,7 @@ export function AIApplicationWriter() {
     try {
       const text = await generateApplication(prompt.trim(), language, category || null)
       setResult(text)
+      setResultVersion((v) => v + 1)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate application.")
     } finally {
@@ -113,15 +120,17 @@ export function AIApplicationWriter() {
   }
 
   async function handleCopy() {
-    if (!result) return
-    await navigator.clipboard.writeText(result)
+    const markdown = editorRef.current?.getMarkdown() ?? result
+    if (!markdown.trim()) return
+    await navigator.clipboard.writeText(markdown)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
 
   function handleDownload() {
-    if (!result) return
-    const blob = new Blob([result], { type: "text/plain;charset=utf-8" })
+    const markdown = editorRef.current?.getMarkdown() ?? result
+    if (!markdown.trim()) return
+    const blob = new Blob([markdown], { type: "text/plain;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -263,46 +272,40 @@ export function AIApplicationWriter() {
                   AI Generated Application
                 </CardTitle>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCopy} disabled={!result}>
+                  <Button variant="outline" size="sm" onClick={handleCopy} disabled={generating}>
                     <Copy className="size-3.5" />
                     {copied ? "Copied" : "Copy"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownload} disabled={!result}>
+                  <Button variant="outline" size="sm" onClick={handleDownload} disabled={generating}>
                     <Download className="size-3.5" />
                     Download
                   </Button>
                   {/* Saving to a real applications list is later work. */}
-                  <Button size="sm" disabled={!result}>
+                  <Button size="sm" disabled>
                     <Save className="size-3.5" />
                     Save Application
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="min-h-96 rounded-md border bg-white p-6 text-sm leading-relaxed whitespace-pre-wrap text-neutral-900">
-                {generating ? (
-                  <div className="flex h-full min-h-84 flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <Loader2 className="size-6 animate-spin" />
-                    <p>Generating your application...</p>
-                  </div>
-                ) : error ? (
-                  <div className="flex h-full min-h-84 flex-col items-center justify-center gap-2 text-center text-red-600 dark:text-red-400">
-                    <FileText className="size-8" />
-                    <p>{error}</p>
-                  </div>
-                ) : result ? (
-                  result
-                ) : (
-                  <div className="flex h-full min-h-84 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-                    <FileText className="size-8" />
-                    <p>Your generated application will appear here.</p>
-                    <p className="text-xs">
-                      Describe what you need on the left, then click{" "}
-                      <span className="font-medium">Generate Application</span>.
-                    </p>
-                  </div>
-                )}
+            {error && (
+              <p className="border-t px-4 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+            )}
+            <CardContent className="relative p-0">
+              {generating && (
+                <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
+                  <Loader2 className="size-3 animate-spin" />
+                  Generating...
+                </div>
+              )}
+              {/* Always mounted -- even with nothing generated yet, someone
+                  should be able to just start writing by hand. Keyed by
+                  resultVersion so each new generation gets a fresh editor
+                  instance loaded with the new markdown -- see
+                  ApplicationEditor for why (Plate's initial value isn't
+                  re-read on prop changes). */}
+              <div className="min-h-96 rounded-b-xl bg-white text-neutral-900">
+                <ApplicationEditor key={resultVersion} ref={editorRef} initialMarkdown={result} />
               </div>
             </CardContent>
           </Card>
