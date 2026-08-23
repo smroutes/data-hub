@@ -106,7 +106,13 @@ export function AIApplicationWriter() {
       setResult(text)
       setResultVersion((v) => v + 1)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate application.")
+      // duration: Infinity -- this can explain exactly why generation
+      // didn't produce a letter (e.g. an unsupported/off-topic request), so
+      // it shouldn't be able to auto-dismiss and go unnoticed before the
+      // user reads it. The Toaster's closeButton lets them dismiss it.
+      toast.error(err instanceof Error ? err.message : "Failed to generate application.", {
+        duration: Infinity,
+      })
     } finally {
       setGenerating(false)
     }
