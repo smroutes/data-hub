@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle } from "react"
+import { forwardRef, useImperativeHandle, useRef } from "react"
 import { Plate, usePlateEditor } from "platejs/react"
 import { MarkdownPlugin } from "@platejs/markdown"
 import { BasicNodesKit } from "@/components/editor/plugins/basic-nodes-kit"
@@ -32,6 +32,10 @@ export interface ApplicationEditorHandle {
   // back to markdown (not plain text) preserves whatever formatting the
   // user applied in the editor for Copy/Download/Save.
   getMarkdown: () => string
+  // The live rendered DOM, for Print -- keeps bold/headings/lists/tables
+  // etc. exactly as shown on screen, unlike getMarkdown() which is fine
+  // for copy/paste but would need re-rendering to look right on paper.
+  getHtml: () => string
 }
 
 // Remount this component (via a `key` prop keyed to the generation, e.g. a
@@ -47,11 +51,13 @@ export const ApplicationEditor = forwardRef<ApplicationEditorHandle, { initialMa
         ? (editor) => editor.getApi(MarkdownPlugin).markdown.deserialize(initialMarkdown)
         : undefined,
     })
+    const domRef = useRef<HTMLDivElement>(null)
 
     useImperativeHandle(
       ref,
       () => ({
         getMarkdown: () => editor.api.markdown.serialize(),
+        getHtml: () => domRef.current?.innerHTML ?? "",
       }),
       [editor]
     )
@@ -60,6 +66,7 @@ export const ApplicationEditor = forwardRef<ApplicationEditorHandle, { initialMa
       <Plate editor={editor}>
         <EditorContainer className="h-full">
           <Editor
+            ref={domRef}
             variant="none"
             className="min-h-[36rem] px-4 py-3 text-sm"
             placeholder="Start writing, or describe what you need on the left and click Generate Application."

@@ -3,10 +3,10 @@ import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import {
   Copy,
-  Download,
   FolderOpen,
   Lightbulb,
   Loader2,
+  Printer,
   Save,
   Sparkles,
 } from "lucide-react"
@@ -21,6 +21,7 @@ import type { ApplicationEditorHandle } from "@/components/editor/ApplicationEdi
 import { cn } from "@/lib/utils"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import { generateApplication, suggestPrompt } from "@/lib/api"
+import { printEditorContent } from "@/lib/editorPrint"
 
 type Language = "bn" | "en" | "hi"
 
@@ -125,16 +126,12 @@ export function AIApplicationWriter() {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  function handleDownload() {
-    const markdown = editorRef.current?.getMarkdown() ?? result
-    if (!markdown.trim()) return
-    const blob = new Blob([markdown], { type: "text/plain;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "application.txt"
-    a.click()
-    URL.revokeObjectURL(url)
+  function handlePrint() {
+    // Empty-check via getMarkdown() (a real semantic serialization) rather
+    // than getHtml(), since Plate's rendered DOM still has wrapper markup
+    // even when the document is visibly empty.
+    if (!(editorRef.current?.getMarkdown() ?? result).trim()) return
+    printEditorContent(editorRef.current?.getHtml() ?? "", "Application")
   }
 
   return (
@@ -274,9 +271,9 @@ export function AIApplicationWriter() {
                     <Copy className="size-3.5" />
                     {copied ? "Copied" : "Copy"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownload} disabled={generating}>
-                    <Download className="size-3.5" />
-                    Download
+                  <Button variant="outline" size="sm" onClick={handlePrint} disabled={generating}>
+                    <Printer className="size-3.5" />
+                    Print
                   </Button>
                   {/* Saving to a real applications list is later work. */}
                   <Button size="sm" disabled>
