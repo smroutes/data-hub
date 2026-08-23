@@ -14,6 +14,7 @@ import { CitizensDashboard } from "@/pages/CitizensDashboard"
 import { ApplicationsTablePage } from "@/pages/ApplicationsTablePage"
 import { AdminPage } from "@/pages/AdminPage"
 import { SettingsPage } from "@/pages/SettingsPage"
+import { AIApplicationWriter } from "@/pages/AIApplicationWriter"
 import { NotFound } from "@/pages/NotFound"
 
 function Search() {
@@ -82,6 +83,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-writer"
+            element={
+              <ProtectedRoute>
+                <AIApplicationWriter />
               </ProtectedRoute>
             }
           />

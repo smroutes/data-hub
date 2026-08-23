@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { ChevronDown, Database, LogOut, Menu } from "lucide-react"
+import { ChevronDown, Database, LogOut, Menu, Sparkles } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -100,6 +100,15 @@ export function Header() {
               </NavigationMenuItem>
             )}
 
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
+                <Link to="/ai-writer" className="flex items-center gap-1.5">
+                  <Sparkles className="size-3.5" />
+                  AI Writer
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+
             {isAdmin && (
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
@@ -172,6 +181,12 @@ export function Header() {
                   ))}
                 </>
               )}
+              <DropdownMenuItem asChild>
+                <Link to="/ai-writer" className="flex items-center gap-1.5">
+                  <Sparkles className="size-3.5" />
+                  AI Writer
+                </Link>
+              </DropdownMenuItem>
               {isAdmin && (
                 <DropdownMenuItem asChild>
                   <Link to="/admin">Admin</Link>
