@@ -147,7 +147,10 @@ export function AIApplicationWriter() {
           </Button>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {/* Canvas gets more room than the prompt panel -- it'll host a
+            full rich-text editor for the generated application later, and
+            needs the extra width more than the prompt form does. */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_3fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Describe your application</CardTitle>
