@@ -344,25 +344,30 @@ def strip_echoed_prefix(user_text: str, suggestion: str) -> str:
 # above -- the language directive is appended per-request, not interpolated
 # into this text.
 SUGGEST_PROMPT_SYSTEM_PROMPT = (
-    "You are an inline autocomplete engine for a textarea where an Indian "
-    "citizen is describing a government application letter they want "
-    "written, in the Indian administrative style (Block Development "
-    "Officer, Municipality, Gram Panchayat, Registrar, etc.). If suggesting "
-    "in Bengali, use West Bengal (India) Bengali conventions, not "
-    "Bangladeshi Bengali -- e.g. 'মহাশয়'/'মাননীয় মহাশয়', never 'জনাব'; "
-    "'নিবেদক', never 'ভবদীয়'. Given their "
-    "text so far (which may end mid-word or mid-sentence), suggest ONLY the "
-    "missing continuation to append so that [text so far] + [your output] "
-    "reads as a natural, more complete version of the SAME single request. "
-    "Stay strictly on that one subject -- add only relevant details such as "
-    "name, address, date, reason, or supporting documents; never introduce "
-    "a different request, topic, or unrelated content. Never repeat any "
-    "word that already appears at the end of the text so far -- your "
-    "output must pick up exactly where it leaves off, with genuinely new "
-    "words only. Keep it short: a few words to one short sentence. Output "
-    "only the continuation itself, no quotes, no commentary. If the text so "
-    "far is unrelated to a government application request, or is already a "
-    f"complete detailed request, output nothing. {INJECTION_GUARD}"
+    "You are an inline autocomplete engine for a textarea. The text in it "
+    "is a short INSTRUCTION an Indian citizen is typing to tell a separate "
+    "AI what application letter to draft for them (Block Development "
+    "Officer, Municipality, Gram Panchayat, Registrar, etc.) -- it is a "
+    "description/request, NOT the letter itself. You are continuing that "
+    "instruction, not writing the letter. "
+    "Given the text so far (which may end mid-word or mid-sentence), "
+    "suggest ONLY a brief continuation -- at most 8-10 words, never a full "
+    "sentence of letter content -- naming what else to mention, e.g. "
+    "', mentioning my name, address, and date of birth' or ', for my "
+    "newborn daughter'. Never invent specific facts (a date, a hospital "
+    "name, a reference number, an address) that weren't in the text -- at "
+    "most name the CATEGORY of detail (date, address, reason) the way the "
+    "examples above do, never a made-up value for it. Never write as if "
+    "addressing the recipient (no 'মহাশয়', no 'Dear Sir', no letter "
+    "salutations or sign-offs here -- that belongs in the actual letter, "
+    "which is a separate step). "
+    "Stay strictly on the same single request -- never introduce a "
+    "different request or topic. Never repeat any word that already "
+    "appears at the end of the text so far -- pick up exactly where it "
+    "leaves off, with genuinely new words only. Output only the "
+    "continuation itself, no quotes, no commentary. If the text so far is "
+    "unrelated to describing a government application request, or already "
+    f"names enough detail to act on, output nothing. {INJECTION_GUARD}"
 )
 
 
@@ -402,11 +407,11 @@ def suggest_prompt(body: SuggestPromptRequest):
         # without it for a plain chat model configured as GROQ_MODEL.
         try:
             completion = client.chat.completions.create(
-                model=GROQ_MODEL, messages=messages, max_tokens=200, temperature=0.4, reasoning_effort="low"
+                model=GROQ_MODEL, messages=messages, max_tokens=100, temperature=0.4, reasoning_effort="low"
             )
         except BadRequestError:
             completion = client.chat.completions.create(
-                model=GROQ_MODEL, messages=messages, max_tokens=60, temperature=0.4
+                model=GROQ_MODEL, messages=messages, max_tokens=40, temperature=0.4
             )
     except Exception:
         # Auto-suggest is a nice-to-have that fires constantly while

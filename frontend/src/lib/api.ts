@@ -30,6 +30,22 @@ export async function suggestPrompt(
   return data.suggestion
 }
 
+// A bare "Request failed (502)" with no further detail means the request
+// never reached our own app at all -- a gateway/proxy-level failure (the
+// backend restarting, a dev-server proxy with nothing listening yet,
+// etc.), so `detail` from our own JSON error body is never present for
+// those. Translate the common gateway codes into something a non-technical
+// user can actually act on; anything else falls back to the raw detail
+// (our own HTTPExceptions always set a real message) or a generic retry
+// prompt.
+function friendlyErrorMessage(status: number, detail?: string | null): string {
+  if (detail) return detail
+  if (status === 502 || status === 503 || status === 504) {
+    return "The AI service is temporarily unavailable. Please try again in a moment."
+  }
+  return "Something went wrong. Please try again."
+}
+
 export async function generateApplication(
   prompt: string,
   language: string,
@@ -42,7 +58,7 @@ export async function generateApplication(
   })
   if (!res.ok) {
     const body = await res.json().catch(() => null)
-    throw new Error(body?.detail || `Request failed (${res.status})`)
+    throw new Error(friendlyErrorMessage(res.status, body?.detail))
   }
   const data = (await res.json()) as { application: string }
   return data.application
