@@ -60,9 +60,12 @@ export function Header() {
             DataHub
           </span>
           {/* Bengali subtitle takes real width and isn't essential once the
-              header has to compete with nav + account controls on a phone. */}
-          <span className="hidden h-8 w-px bg-border sm:block" />
-          <div className="hidden flex-col justify-center sm:flex">
+              header has to compete with nav + account controls on a phone --
+              matches the nav's own md breakpoint (below md it's the
+              hamburger menu) so it doesn't show up in the sm..md range
+              where the header is still in "mobile" layout. */}
+          <span className="hidden h-8 w-px bg-border md:block" />
+          <div className="hidden flex-col justify-center md:flex">
             <span className="text-xs leading-tight font-medium text-foreground">
               পান্ডবেশ্বর
             </span>
