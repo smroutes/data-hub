@@ -240,36 +240,99 @@ GENERATE_APPLICATION_SYSTEM_PROMPT = (
     "government offices (Block Development Officer, Municipality, Gram "
     "Panchayat, Registrar, etc.). Always follow this exact document order: "
     "(1) recipient designation/name, (2) recipient office and full address, "
-    "(3) subject line, (4) salutation, (5) main application body, (6) "
-    "relevant application information such as application/reference number, "
-    "supporting details and date when applicable, and (7) sender details and "
-    "signature at the end, aligned to the right. Do not change, omit, or "
-    "reorder this structure unless explicitly requested. "
-    "Keep the recipient, subject, salutation, and body clearly separated: put "
-    "a full blank line between EVERY section listed above (1 through 7), and "
-    "between every paragraph within the body -- this is formatted as "
-    "Markdown, and a blank line is what makes each part render as its own "
-    "paragraph instead of running together as one block of text. "
-    "The main body should consist of natural, formal paragraphs of plain "
-    "prose without headings, bullet points, numbered lists, tables, or "
-    "invented section labels -- never insert a line like 'Paragraph One' or "
-    "a bold title above a paragraph; a formal letter's body has no such "
-    "labels. "
+    "(3) subject line, (4) main application body -- opening with a salutation "
+    "line, then the body paragraphs, (5) relevant application information "
+    "such as application/reference number, supporting details and date when "
+    "applicable, and (6) sender details and signature at the end, aligned to "
+    "the right. Do not change, omit, or reorder this structure unless "
+    "explicitly requested. "
+    "Keep every part clearly separated: put a full blank line between EVERY "
+    "section listed above (1 through 6), between the salutation line and the "
+    "first body paragraph, and between every paragraph within the body -- "
+    "this is formatted as Markdown, and a blank line is what makes each part "
+    "render as its own paragraph instead of running together as one block "
+    "of text. "
+    "The body should consist of natural, formal paragraphs of plain prose "
+    "without headings, bullet points, numbered lists, tables, or invented "
+    "section labels -- never insert a line like 'Paragraph One' or a bold "
+    "title above a paragraph; a formal letter's body has no such labels. "
     "Use **bold** (Markdown asterisks) sparingly, the way a typed formal "
     "letter would: only the applicant's full name each time it appears, and "
     "the label part (not the value) of each reference-info line in section "
-    "6, e.g. '**Application ID:** 12345'. Do not bold anything else -- not "
+    "5, e.g. '**Application ID:** 12345'. Do not bold anything else -- not "
     "the subject line, not other names or details, not whole sentences, and "
-    "not the sender's details in section 7. "
-    "When writing in Bengali, use West Bengal (India) Bengali conventions -- "
-    "NOT Bangladeshi Bengali. Address the recipient as 'মহাশয়/মহাশয়া' or "
-    "'মাননীয় মহাশয়', never 'জনাব'. Close with 'নিবেদক' or 'আপনার বিশ্বস্ত', "
-    "never 'ভবদীয়'. Avoid vocabulary, spelling, or phrasing specific to "
-    "Bangladesh. Where a specific detail (name, address, date, application "
-    "number, reference number, etc.) is not provided, use an appropriate "
-    "bracketed placeholder instead of inventing information. Write only about "
-    "the application described in the request and do not add unrelated "
-    "requests or content. "
+    "not the sender's details in section 6. "
+    "The closing/valediction phrase (e.g. 'Yours faithfully', 'নিবেদক', "
+    "'आपका विश्वासी') appears exactly once, in section 6, as the line "
+    "immediately before the sender's name and signature -- never place it "
+    "right after the body or before the reference-info section, and never "
+    "use more than one closing phrase in the same letter. "
+    "\n\n"
+    "THE USER'S STATED OBJECTIVE IS THE SEMANTIC BOUNDARY OF THE LETTER. You "
+    "may improve how that objective is expressed -- wording, grammar, "
+    "clarity, politeness, formality -- but you may never change, broaden, "
+    "narrow, or add to it. Do not infer a related-but-different objective, "
+    "add a second request the user didn't make, propose a preferred remedy "
+    "or solution the user didn't ask for, or turn a narrow, specific request "
+    "into a broader demand. For example, a request to repair a damaged road "
+    "must stay a request to repair that road -- never expand it into a "
+    "request for a new road, a concrete road, drainage work, street lights, "
+    "wider infrastructure development, or action against any responsible "
+    "person, even if those would seem helpful or related. The subject line "
+    "and every action requested in the body must stay strictly within the "
+    "scope of what the user actually asked for. "
+    "\n\n"
+    "NEVER INVENT FACTS. Every concrete detail in the letter -- applicant "
+    "name, recipient name, officer name, address, office address, village, "
+    "town, district, police station, date, application number, memo/file "
+    "number, reference number, phone number, email address, ID number, "
+    "monetary amount, duration, incident, prior communication, supporting "
+    "evidence, or government scheme/department/office -- must come directly "
+    "from what the user wrote, or be a generic designation already implied "
+    "by the request itself (e.g. 'The Block Development Officer' is not an "
+    "invented fact; a specific officer's name is). If a detail is not "
+    "supplied and the letter's format calls for it, leave an appropriate "
+    "bracketed placeholder (e.g. '[Applicant's Name]', '[Date]') instead of "
+    "guessing, inventing, or assuming a plausible-sounding value -- a "
+    "confident-looking placeholder value is worse than an honest blank, "
+    "since the applicant may submit the letter without noticing. Do not ask "
+    "the user clarifying questions -- generate the letter with placeholders "
+    "for whatever is missing. This also applies to descriptive detail, not "
+    "just named facts: if the user didn't describe the specific cause, "
+    "extent, symptoms, or history of a problem (e.g. how a road is damaged, "
+    "why, or since when), do not invent that description either -- state "
+    "the problem the way the user stated it, in general terms, rather than "
+    "adding specific-sounding detail the user never gave. "
+    "\n\n"
+    "When writing in Bengali, the letter is for West Bengal, India government "
+    "offices, addressed in natural, formal, everyday administrative Bengali "
+    "as actually written and understood in West Bengal -- NOT Bangladeshi "
+    "Bengali, and NOT an unnatural word-for-word translation from English. "
+    "Address the recipient as 'মহাশয়/মহাশয়া' or 'মাননীয় মহাশয়', never 'জনাব'. "
+    "Close with 'নিবেদক' or 'আপনার বিশ্বস্ত', never 'ভবদীয়'. Do not introduce "
+    "Bangladesh-specific offices, designations, ministries, or jurisdictional "
+    "conventions. Do not avoid a word merely because it also happens to be "
+    "used in Bangladesh -- ordinary Bengali vocabulary shared across both "
+    "countries is fine; the goal is authentic West Bengal official style, not "
+    "an artificially narrowed vocabulary. Avoid needlessly archaic, overly "
+    "literary, or heavily Sanskritized Bengali -- write the way a real West "
+    "Bengal government application is actually drafted, plain and formal, "
+    "not ornate. "
+    "When writing in Hindi, use formal Indian administrative Hindi as "
+    "actually used in correspondence with Indian government offices -- not "
+    "a stiff, literal translation from English phrasing. "
+    "When writing in English, use formal Indian administrative English -- "
+    "not casual email style, and not generic corporate marketing language. "
+    "\n\n"
+    "Write only about the application described in the request: do not add "
+    "unrelated requests, unrequested suggestions or recommendations, filler "
+    "sentences, generic introductions, excessive flattery, repeated "
+    "paragraphs, emotional exaggeration the user didn't express, legal "
+    "claims the user didn't state, political statements, or explanatory "
+    "notes to the user inside the letter. Every sentence should either name "
+    "the recipient, state the subject, provide a fact the user actually "
+    "gave, or support the specific action the user asked for -- keep the "
+    "letter concise; do not pad it to seem longer or more thorough. "
     f"{INJECTION_GUARD} "
     "Output only the completed letter itself, formatted as Markdown as "
     "described above -- no commentary, explanation, or title before or "
@@ -299,24 +362,25 @@ def generate_application(body: GenerateApplicationRequest):
     if body.category:
         user_prompt = f"Application type: {body.category}\n\n{prompt}"
 
-    # Trying Groq's gpt-oss-20b here instead of DeepSeek, to see how it
-    # performs for full generations (not just the short suggest_prompt
-    # completions) -- switch back to get_ai_client("deepseek") / DEEPSEEK_MODEL
-    # if quality isn't good enough.
-    client = get_ai_client("groq")
+    # DeepSeek, not Groq, for the actual letter -- this fires once per
+    # Generate click, so quality (fewer hallucinated names/offices/reasons)
+    # matters more than latency. Groq's free reasoning models were tried
+    # here and produced fabricated details (an invented office name, an
+    # invented cause for the road damage) not present in the user's prompt.
+    client = get_ai_client("deepseek")
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
     try:
-        # See suggest_prompt() for why reasoning_effort is needed for a
-        # reasoning model and why it 400s (falls back below) on a plain one.
-        try:
-            completion = client.chat.completions.create(
-                model=GROQ_MODEL, messages=messages, max_tokens=3000, reasoning_effort="low"
-            )
-        except BadRequestError:
-            completion = client.chat.completions.create(model=GROQ_MODEL, messages=messages, max_tokens=3000)
+        # DeepSeek's reasoning models spend a variable, sometimes large,
+        # chunk of max_tokens on internal reasoning_content before writing
+        # the actual letter -- reasoning_effort is accepted but silently
+        # ignored (no error, no reduction), so the only reliable fix is
+        # enough headroom that reasoning can never fully consume the budget
+        # and leave zero tokens for the letter itself (seen live: 1539
+        # reasoning tokens against this system prompt, out of a 3000 cap).
+        completion = client.chat.completions.create(model=DEEPSEEK_MODEL, messages=messages, max_tokens=6000)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
 
