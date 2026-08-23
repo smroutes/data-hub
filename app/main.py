@@ -313,5 +313,16 @@ def suggest_prompt(body: SuggestPromptRequest):
         # an error for something this non-critical.
         return {"suggestion": ""}
 
-    suggestion = (completion.choices[0].message.content or "").strip()
+    # rstrip only, not a full strip -- a leading space from the model is
+    # meaningful here (it's concatenated directly onto `text` client-side),
+    # and blindly stripping it was exactly why "ami ekta" + "সরকারি..."
+    # rendered as one run-on word with no gap. Only add/remove a boundary
+    # space ourselves when the model's own choice would otherwise double up
+    # or omit it entirely.
+    suggestion = (completion.choices[0].message.content or "").rstrip()
+    if suggestion:
+        if text[-1:].isspace():
+            suggestion = suggestion.lstrip()
+        elif not suggestion[0].isspace() and suggestion[0] not in ".,!?;:)]}'\"।":
+            suggestion = " " + suggestion
     return {"suggestion": suggestion}
