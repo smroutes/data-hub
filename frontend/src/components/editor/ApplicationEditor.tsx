@@ -61,7 +61,7 @@ export const ApplicationEditor = forwardRef<ApplicationEditorHandle, { initialMa
         <EditorContainer className="h-full">
           <Editor
             variant="none"
-            className="min-h-96 px-4 py-3 text-sm"
+            className="min-h-[36rem] px-4 py-3 text-sm"
             placeholder="Start writing, or describe what you need on the left and click Generate Application."
           />
         </EditorContainer>

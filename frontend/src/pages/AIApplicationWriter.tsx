@@ -303,7 +303,7 @@ export function AIApplicationWriter() {
                   instance loaded with the new markdown -- see
                   ApplicationEditor for why (Plate's initial value isn't
                   re-read on prop changes). */}
-              <div className="min-h-96 rounded-b-xl bg-white text-neutral-900">
+              <div className="min-h-[36rem] rounded-b-xl bg-white text-neutral-900">
                 <ApplicationEditor key={resultVersion} ref={editorRef} initialMarkdown={result} />
               </div>
             </CardContent>
