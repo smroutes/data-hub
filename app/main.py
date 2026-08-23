@@ -3,7 +3,7 @@ import os
 
 import duckdb
 from fastapi import FastAPI, HTTPException, Request
-from openai import OpenAI
+from openai import BadRequestError, OpenAI
 from pydantic import BaseModel
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
@@ -32,7 +32,10 @@ DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL") or "deepseek-chat"
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY") or None
 GROQ_BASE_URL = os.environ.get("GROQ_BASE_URL") or "https://api.groq.com/openai/v1"
-GROQ_MODEL = os.environ.get("GROQ_MODEL") or "llama-3.1-8b-instant"
+# gpt-oss-20b is a reasoning model -- see suggest_prompt() below for why
+# that needs reasoning_effort="low" (with a fallback for plain chat models
+# configured here instead, which don't support that param at all).
+GROQ_MODEL = os.environ.get("GROQ_MODEL") or "openai/gpt-oss-20b"
 
 # Constructed lazily (not at import time) so a missing key only breaks the
 # endpoints that need it, not the whole app -- search/health keep working.
@@ -249,3 +252,66 @@ def generate_application(body: GenerateApplicationRequest):
     if not text:
         raise HTTPException(status_code=502, detail="AI generation returned no content")
     return {"application": text}
+
+
+class SuggestPromptRequest(BaseModel):
+    text: str
+    language: str = "bn"
+    category: str | None = None
+
+
+@app.post("/api/suggest-prompt")
+def suggest_prompt(body: SuggestPromptRequest):
+    text = body.text
+    # Debounced-while-typing from the frontend -- too little to work with
+    # yet, and not worth a Groq call for.
+    if len(text.strip()) < 3:
+        return {"suggestion": ""}
+    language_name = LANGUAGE_NAMES.get(body.language, LANGUAGE_NAMES["bn"])
+
+    system_prompt = (
+        "You are an inline autocomplete engine for a textarea where a user "
+        "describes a government application letter they want written. Given "
+        "the user's text so far (which may end mid-word or mid-sentence), "
+        f"suggest ONLY the continuation text to append -- in {language_name} -- "
+        "so that concatenating [text so far] + [your output] reads as a "
+        "natural, more complete request (e.g. adding what details to "
+        "include, like name/address/date/reason). Do not repeat any of the "
+        "text so far. Keep it short: a few words to one short sentence. "
+        "Output only the continuation, no quotes, no commentary. If the "
+        "text is already a complete, detailed request, output nothing."
+    )
+    user_prompt = text
+    if body.category:
+        user_prompt = f"Application type: {body.category}\n\nText so far: {text}"
+
+    client = get_ai_client("groq")
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    try:
+        # Most of Groq's current free models (including gpt-oss) are
+        # reasoning models -- message.content and message.reasoning are
+        # properly separate fields, but reasoning tokens still count
+        # against max_tokens, so a low-latency endpoint like this needs
+        # reasoning kept short or it burns the whole budget "thinking" and
+        # never gets to writing the actual continuation. Not every model
+        # supports the param though (a 400 if it doesn't), so retry
+        # without it for a plain chat model configured as GROQ_MODEL.
+        try:
+            completion = client.chat.completions.create(
+                model=GROQ_MODEL, messages=messages, max_tokens=200, temperature=0.4, reasoning_effort="low"
+            )
+        except BadRequestError:
+            completion = client.chat.completions.create(
+                model=GROQ_MODEL, messages=messages, max_tokens=60, temperature=0.4
+            )
+    except Exception:
+        # Auto-suggest is a nice-to-have that fires constantly while
+        # typing -- fail quietly (empty suggestion) instead of surfacing
+        # an error for something this non-critical.
+        return {"suggestion": ""}
+
+    suggestion = (completion.choices[0].message.content or "").strip()
+    return {"suggestion": suggestion}

@@ -15,6 +15,21 @@ export async function searchRecords(
   return res.json()
 }
 
+export async function suggestPrompt(
+  text: string,
+  language: string,
+  category: string | null
+): Promise<string> {
+  const res = await fetch("/api/suggest-prompt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, language, category }),
+  })
+  if (!res.ok) return "" // best-effort -- never surface an error for this
+  const data = (await res.json()) as { suggestion: string }
+  return data.suggestion
+}
+
 export async function generateApplication(
   prompt: string,
   language: string,

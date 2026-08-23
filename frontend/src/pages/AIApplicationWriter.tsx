@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import {
   Copy,
@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
-import { generateApplication } from "@/lib/api"
+import { generateApplication, suggestPrompt } from "@/lib/api"
 
 type Language = "bn" | "en" | "hi"
 
@@ -53,6 +53,37 @@ export function AIApplicationWriter() {
   const [result, setResult] = useState("")
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
+  const [suggestion, setSuggestion] = useState("")
+  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Debounced ghost-text autocomplete (Groq) -- clears immediately on any
+  // edit so a stale suggestion never lingers against changed text, then
+  // fetches a fresh one after the user pauses typing.
+  useEffect(() => {
+    setSuggestion("")
+    if (suggestTimer.current) clearTimeout(suggestTimer.current)
+    if (prompt.trim().length < 3 || generating) return
+
+    suggestTimer.current = setTimeout(async () => {
+      const s = await suggestPrompt(prompt, language, category || null)
+      setSuggestion(s)
+    }, 600)
+
+    return () => {
+      if (suggestTimer.current) clearTimeout(suggestTimer.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prompt, language, category])
+
+  function handlePromptKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Tab" && suggestion) {
+      e.preventDefault()
+      setPrompt((p) => p + suggestion)
+      setSuggestion("")
+    } else if (e.key === "Escape" && suggestion) {
+      setSuggestion("")
+    }
+  }
 
   async function handleGenerate() {
     if (!prompt.trim() || generating) return
@@ -130,12 +161,34 @@ export function AIApplicationWriter() {
               <CardDescription>Tell AI what type of application you want to write.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <Textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={PROMPT_PLACEHOLDER[language]}
-                className="min-h-40 resize-none"
-              />
+              <div className="relative">
+                {/* Ghost-text overlay: identical box model to the textarea
+                    below, with an invisible copy of the typed text so only
+                    the suggestion tail lines up after the cursor -- same
+                    technique editors like Copilot use for inline
+                    autocomplete. Assumes the cursor is at the end of the
+                    text, which holds true while just typing forward. */}
+                <div
+                  aria-hidden
+                  className="border-input pointer-events-none absolute inset-0 min-h-40 overflow-hidden rounded-md border border-transparent px-3 py-2 text-sm whitespace-pre-wrap break-words"
+                >
+                  <span className="invisible">{prompt}</span>
+                  <span className="text-muted-foreground">{suggestion}</span>
+                </div>
+                <Textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={handlePromptKeyDown}
+                  placeholder={PROMPT_PLACEHOLDER[language]}
+                  className="relative min-h-40 resize-none"
+                />
+              </div>
+              {suggestion && (
+                <p className="-mt-2 text-xs text-muted-foreground">
+                  Press <kbd className="rounded border bg-muted px-1 py-0.5 font-sans">Tab</kbd> to accept the
+                  suggestion.
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 {LANGUAGES.map((lang) => (
