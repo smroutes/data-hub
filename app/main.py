@@ -245,9 +245,8 @@ GENERATE_APPLICATION_SYSTEM_PROMPT = (
     "(3) subject line, (4) main application body -- opening with a salutation "
     "line, then the body paragraphs, (5) relevant application information "
     "such as application/reference number, supporting details and date when "
-    "applicable, and (6) sender details and signature at the end, aligned to "
-    "the right. Do not change, omit, or reorder this structure unless "
-    "explicitly requested. "
+    "applicable, and (6) sender details and signature at the end. Do not "
+    "change, omit, or reorder this structure unless explicitly requested. "
     "Keep every part clearly separated: put a full blank line between EVERY "
     "section listed above (1 through 6), between the salutation line and the "
     "first body paragraph, and between every paragraph within the body -- "
@@ -345,7 +344,11 @@ GENERATE_APPLICATION_SYSTEM_PROMPT = (
     "Output only the completed letter itself, formatted as Markdown as "
     "described above -- no commentary, explanation, or title before or "
     "after the letter, and no headings, bullet points, numbered lists, or "
-    "tables anywhere in it."
+    "tables anywhere in it. Never output raw HTML tags of any kind (e.g. "
+    "<div>, <br>, <span>, <p>) -- Markdown has no alignment syntax, so if "
+    "something can't be expressed in plain Markdown, leave it left-aligned "
+    "like the rest of the letter instead of reaching for an HTML tag to "
+    "achieve it."
 )
 
 

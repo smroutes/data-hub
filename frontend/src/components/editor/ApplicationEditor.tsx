@@ -1,4 +1,6 @@
-import { forwardRef, useImperativeHandle, useRef } from "react"
+import { forwardRef, useImperativeHandle } from "react"
+import { createSlateEditor } from "platejs"
+import { serializeHtml } from "platejs/static"
 import { Plate, usePlateEditor } from "platejs/react"
 import { MarkdownPlugin } from "@platejs/markdown"
 import { BasicNodesKit } from "@/components/editor/plugins/basic-nodes-kit"
@@ -10,6 +12,7 @@ import { ListKit } from "@/components/editor/plugins/list-kit"
 import { TableKit } from "@/components/editor/plugins/table-kit"
 import { EmojiKit } from "@/components/editor/plugins/emoji-kit"
 import { FixedToolbarKit } from "@/components/editor/plugins/fixed-toolbar-kit"
+import { PrintStaticKit } from "@/components/editor/plugins/print-static-kit"
 import { Editor, EditorContainer } from "@/components/ui/editor"
 
 // ListKit already brings in indent support (needed by both lists and the
@@ -32,10 +35,16 @@ export interface ApplicationEditorHandle {
   // back to markdown (not plain text) preserves whatever formatting the
   // user applied in the editor for Copy/Download/Save.
   getMarkdown: () => string
-  // The live rendered DOM, for Print -- keeps bold/headings/lists/tables
-  // etc. exactly as shown on screen, unlike getMarkdown() which is fine
-  // for copy/paste but would need re-rendering to look right on paper.
-  getHtml: () => string
+  // For Print. Deliberately NOT the live contentEditable DOM's innerHTML --
+  // that carries Slate's own editing-DOM artifacts (e.g. it relies on a
+  // "whitespace-break-spaces" CSS class, present on the on-screen editor
+  // but not on whatever consumes the raw HTML, to even display line breaks
+  // correctly), which Plate's own docs call out as producing inconsistent
+  // results for exactly this kind of export. Instead this builds a
+  // throwaway, non-interactive Slate editor from the same document value
+  // and uses Plate's documented `serializeHtml` (platejs/static) to get
+  // clean, semantic HTML straight from the document model.
+  getPrintHtml: () => Promise<string>
 }
 
 // Remount this component (via a `key` prop keyed to the generation, e.g. a
@@ -51,13 +60,17 @@ export const ApplicationEditor = forwardRef<ApplicationEditorHandle, { initialMa
         ? (editor) => editor.getApi(MarkdownPlugin).markdown.deserialize(initialMarkdown)
         : undefined,
     })
-    const domRef = useRef<HTMLDivElement>(null)
-
     useImperativeHandle(
       ref,
       () => ({
         getMarkdown: () => editor.api.markdown.serialize(),
-        getHtml: () => domRef.current?.innerHTML ?? "",
+        getPrintHtml: async () => {
+          const staticEditor = createSlateEditor({
+            plugins: PrintStaticKit,
+            value: editor.children,
+          })
+          return serializeHtml(staticEditor)
+        },
       }),
       [editor]
     )
@@ -66,7 +79,6 @@ export const ApplicationEditor = forwardRef<ApplicationEditorHandle, { initialMa
       <Plate editor={editor}>
         <EditorContainer className="h-full">
           <Editor
-            ref={domRef}
             variant="none"
             className="min-h-[36rem] px-4 py-3 text-sm"
             placeholder="Start writing, or describe what you need on the left and click Generate Application."

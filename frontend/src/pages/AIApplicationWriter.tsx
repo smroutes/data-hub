@@ -127,12 +127,13 @@ export function AIApplicationWriter() {
     setResult("")
   }
 
-  function handlePrint() {
+  async function handlePrint() {
     // Empty-check via getMarkdown() (a real semantic serialization) rather
-    // than getHtml(), since Plate's rendered DOM still has wrapper markup
+    // than getPrintHtml(), since a static render still has wrapper markup
     // even when the document is visibly empty.
     if (!(editorRef.current?.getMarkdown() ?? result).trim()) return
-    printEditorContent(editorRef.current?.getHtml() ?? "", "Application")
+    const html = (await editorRef.current?.getPrintHtml()) ?? ""
+    printEditorContent(html, "Application")
   }
 
   return (
