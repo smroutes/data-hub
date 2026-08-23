@@ -42,7 +42,7 @@ export function ApplicationFormModal({
         <DialogHeader className="shrink-0 p-6 pb-4">
           <DialogTitle>{isEdit ? "Edit Application" : "New Application"}</DialogTitle>
           <DialogDescription>
-            Annapurna Scheme -- Name and Full Address are required.
+            Annapurna Scheme -- Name, Block, Mobile Number, and Full Address are required.
           </DialogDescription>
         </DialogHeader>
         <div className="shrink-0 border-t" />

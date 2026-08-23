@@ -48,9 +48,13 @@ export function ApplicationForm({
     const address = (values.address ?? "").trim()
     const mobile = (values.mobile_number ?? "").trim()
     const aadhaar = (values.aadhaar_number ?? "").trim()
+    const block = (values.block ?? "").trim()
 
     if (!name) {
       next.name = "Name is required."
+    }
+    if (!block) {
+      next.block = "Block is required."
     }
     if (!address) {
       next.address = "Full address is required."
@@ -117,8 +121,14 @@ export function ApplicationForm({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Block</label>
-            <Select value={values.block ?? ""} onChange={(e) => set("block", e.target.value)}>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Block <span className="text-red-600 dark:text-red-400">*</span>
+            </label>
+            <Select
+              value={values.block ?? ""}
+              onChange={(e) => set("block", e.target.value)}
+              aria-invalid={!!errors.block}
+            >
               <option value="">Select a block</option>
               {values.block && !KNOWN_BLOCKS.has(values.block) && (
                 <option value={values.block}>{values.block}</option>
@@ -133,6 +143,9 @@ export function ApplicationForm({
                 </optgroup>
               ))}
             </Select>
+            {errors.block && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.block}</p>
+            )}
           </div>
 
           <div>
