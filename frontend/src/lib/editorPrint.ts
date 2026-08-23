@@ -25,7 +25,14 @@ export function printEditorContent(bodyHtml: string, title: string): void {
     line-height: 1.7;
     color: #000;
   }
-  p { margin: 0 0 14pt 0; }
+  /* The editor renders soft line breaks (e.g. inside a multi-line address
+     or signature block) as literal newline characters, relying on its own
+     "whitespace-break-spaces" CSS class to display them as real line
+     breaks -- that class isn't part of the HTML this function receives
+     (getHtml() grabs innerHTML, not the editor's own classes), so without
+     this the newlines collapse to plain spaces and multi-line blocks
+     print as one run-on line. */
+  p { margin: 0 0 14pt 0; white-space: pre-wrap; }
   h1, h2, h3, h4, h5, h6 { margin: 16pt 0 10pt 0; }
   ul, ol { margin: 0 0 14pt 1.4em; padding: 0; }
   blockquote { margin: 0 0 14pt 0; padding-left: 0.75em; border-left: 2px solid #999; }
