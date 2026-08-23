@@ -196,17 +196,23 @@ export function AIApplicationWriter() {
                 </Select>
               </div>
 
-              <Button onClick={handleGenerate} disabled={!prompt.trim() || generating}>
-                {generating ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Sparkles className="size-4" />
-                )}
-                Generate Application
-              </Button>
-              <Button variant="outline" onClick={handleClear} disabled={generating}>
-                Clear
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={!prompt.trim() || generating}
+                  className="flex-1"
+                >
+                  {generating ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                  Generate Application
+                </Button>
+                <Button variant="outline" onClick={handleClear} disabled={generating}>
+                  Clear
+                </Button>
+              </div>
 
               <div className="flex gap-2.5 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
                 <Lightbulb className="size-4 shrink-0 text-brand" />
