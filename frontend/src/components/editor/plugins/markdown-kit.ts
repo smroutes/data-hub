@@ -22,7 +22,14 @@ const DEFAULT_ALIGN = "start"
 // unambiguous tag name sidesteps the whole collision.
 const ALIGN_TAG = "blockalign"
 
-function wrapIfAligned(node: { align?: string }, mdastNode: unknown) {
+// Return type is deliberately `any`, not `unknown` -- MdRules' serialize
+// signatures expect a specific mdast node type per key (Paragraph,
+// Heading, ...), and this returns either the untouched original node or a
+// synthetic mdxJsxFlowElement wrapper, neither of which is expressible as
+// one shared concrete type. Matches the `any`-casted style already used
+// throughout this file to bridge the same untyped-mdast-node reality.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function wrapIfAligned(node: { align?: string }, mdastNode: unknown): any {
   const align = node.align
   if (!align || align === DEFAULT_ALIGN) return mdastNode
   return {
@@ -87,6 +94,17 @@ const alignRules: MdRules = {
 // empty/null despite configure() being called correctly -- root cause
 // not fully isolated, but bypassing the deferred path via a direct
 // options override sidesteps it entirely).
+//
+// Cast back to `typeof MarkdownPlugin` -- every other plugin in this
+// object spread is a real `SlatePlugin<...>` instance from `.configure()`,
+// and `usePlateEditor`'s generic plugin-array inference keys off that
+// specific branded type. Without the cast, the spread's inferred type is
+// just a wide structural object, which silently degrades the *entire*
+// editor's inferred API (every plugin combined, not just this one) to
+// `unknown` -- caught by `tsc -b` (a full `npm run build`) but invisible
+// to a plain `tsc --noEmit` run against this project's root tsconfig,
+// which has an empty `files` array and resolves nothing outside
+// `--build` mode.
 export const MarkdownKit = {
   ...MarkdownPlugin,
   options: {
@@ -94,4 +112,4 @@ export const MarkdownKit = {
     remarkPlugins: [remarkMdx],
     rules: alignRules,
   },
-}
+} as typeof MarkdownPlugin

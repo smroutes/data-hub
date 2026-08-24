@@ -143,7 +143,7 @@ export const ApplicationEditor = forwardRef<
               if (active && suggestions.length > 0) {
                 acceptSuggestion(selectedIndex, "।")
               } else {
-                editor.insertText("।")
+                editor.tf.insertText("।")
               }
               return
             }

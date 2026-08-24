@@ -44,18 +44,18 @@ function getCurrentWord(editor: PlateEditor): { word: string; range: WordRange }
   const { selection } = editor
   if (!selection || !RangeApi.isCollapsed(selection)) return null
 
-  const blockEntry = editor.above({ match: (n) => editor.isBlock(n) })
+  const blockEntry = editor.api.above({ match: (n) => editor.api.isBlock(n) })
   if (!blockEntry) return null
   const [, blockPath] = blockEntry
-  const blockStart = editor.start(blockPath)
+  const blockStart = editor.api.start(blockPath)
   if (!blockStart) return null
 
-  const textBeforeCursor = editor.string({ anchor: blockStart, focus: selection.anchor })
+  const textBeforeCursor = editor.api.string({ anchor: blockStart, focus: selection.anchor })
   const match = /[A-Za-z]+$/.exec(textBeforeCursor)
   if (!match) return null
 
   const word = match[0]
-  const wordStart = editor.before(selection.anchor, { distance: word.length, unit: "character" })
+  const wordStart = editor.api.before(selection.anchor, { distance: word.length, unit: "character" })
   if (!wordStart) return null
 
   return { word, range: { anchor: wordStart, focus: selection.anchor } }
@@ -233,9 +233,9 @@ export function useTransliterationSuggestions(editor: PlateEditor, language: Tra
     (index: number, trailing = "") => {
       const suggestion = suggestions[index]
       if (!wordRange || !suggestion) return
-      editor.delete({ at: wordRange })
-      editor.select(wordRange.anchor)
-      editor.insertText(suggestion.text + trailing)
+      editor.tf.delete({ at: wordRange })
+      editor.tf.select(wordRange.anchor)
+      editor.tf.insertText(suggestion.text + trailing)
       // Only the identity fallback (plain typed word, always last in the
       // list) needs suppressing -- every other candidate replaces the
       // Latin word with non-Latin script, which already fails to re-match
