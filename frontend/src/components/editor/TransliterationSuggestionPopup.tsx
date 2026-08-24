@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
-import type { BengaliSuggestion } from "@/hooks/use-bengali-suggestions"
+import type { TransliterationSuggestion } from "@/hooks/use-transliteration-suggestions"
 
-interface BengaliSuggestionPopupProps {
-  suggestions: BengaliSuggestion[]
+interface TransliterationSuggestionPopupProps {
+  suggestions: TransliterationSuggestion[]
   selectedIndex: number
   onSelect: (index: number) => void
   onHover: (index: number) => void
@@ -13,12 +13,12 @@ interface BengaliSuggestionPopupProps {
 // the current caret range) rather than any Plate/Slate-specific coordinate
 // utility -- the editor is a real contentEditable div, so this works
 // regardless of the rich-text layer built on top of it.
-export function BengaliSuggestionPopup({
+export function TransliterationSuggestionPopup({
   suggestions,
   selectedIndex,
   onSelect,
   onHover,
-}: BengaliSuggestionPopupProps) {
+}: TransliterationSuggestionPopupProps) {
   const [rect, setRect] = useState<{ top: number; left: number; bottom: number } | null>(null)
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export function BengaliSuggestionPopup({
                 : "text-popover-foreground hover:bg-muted"
             )}
           >
-            <span>{s.bengali}</span>
+            <span>{s.text}</span>
             {i === 0 && (
               <span
                 className={cn(

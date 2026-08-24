@@ -14,8 +14,9 @@ import { EmojiKit } from "@/components/editor/plugins/emoji-kit"
 import { FixedToolbarKit } from "@/components/editor/plugins/fixed-toolbar-kit"
 import { PrintStaticKit } from "@/components/editor/plugins/print-static-kit"
 import { Editor, EditorContainer } from "@/components/ui/editor"
-import { BengaliSuggestionPopup } from "@/components/editor/BengaliSuggestionPopup"
-import { useBengaliSuggestions } from "@/hooks/use-bengali-suggestions"
+import { TransliterationSuggestionPopup } from "@/components/editor/TransliterationSuggestionPopup"
+import { useTransliterationSuggestions } from "@/hooks/use-transliteration-suggestions"
+import type { TransliterationLanguage } from "@/hooks/use-transliteration-suggestions"
 
 // ListKit already brings in indent support (needed by both lists and the
 // Indent/Outdent toolbar buttons), so it's not listed separately here.
@@ -51,6 +52,10 @@ export interface ApplicationEditorHandle {
 
 type Language = "bn" | "en" | "hi"
 
+function usesTransliteration(language: Language): language is TransliterationLanguage {
+  return language === "bn" || language === "hi"
+}
+
 // Remount this component (via a `key` prop keyed to the generation, e.g. a
 // counter bumped on each successful Generate) to load new AI output --
 // Plate's `value` is only consulted once, at editor construction. Also
@@ -67,15 +72,19 @@ export const ApplicationEditor = forwardRef<
       : undefined,
   })
 
+  // Bengali/Hindi suggestions need a real language value even when the
+  // active language is English -- the hook itself is inert unless onUpdate
+  // is actually called (gated below), so this fallback never does anything
+  // except satisfy the type.
   const { suggestions, selectedIndex, setSelectedIndex, active, onUpdate, acceptSuggestion, clear } =
-    useBengaliSuggestions(editor)
+    useTransliterationSuggestions(editor, usesTransliteration(language) ? language : "bn")
 
-  // Dismiss any pending suggestion state immediately on switching away from
-  // Bengali -- otherwise it lingers until the next edit (onChange is the
+  // Dismiss any pending suggestion state immediately on switching to
+  // English -- otherwise it lingers until the next edit (onChange is the
   // only other place this clears, and a language-pill click alone doesn't
   // fire it).
   useEffect(() => {
-    if (language !== "bn") clear()
+    if (!usesTransliteration(language)) clear()
   }, [language, clear])
 
   useImperativeHandle(
@@ -94,7 +103,7 @@ export const ApplicationEditor = forwardRef<
   )
 
   return (
-    <Plate editor={editor} onChange={() => language === "bn" && onUpdate()}>
+    <Plate editor={editor} onChange={() => usesTransliteration(language) && onUpdate()}>
       {/* !overflow-visible: EditorContainer defaults to overflow-y-auto,
           which -- regardless of whether it ever actually overflows --
           makes it the toolbar's "nearest scrolling ancestor" for
@@ -113,14 +122,14 @@ export const ApplicationEditor = forwardRef<
           className="min-h-[44rem] px-4 py-3 text-base"
           placeholder="Start writing, or describe what you need on the left and click Generate Application."
           onKeyDown={(e) => {
-            // Bengali full stop ("।", purnochched) -- typed as a plain "."
-            // like every other Avro-based tool, but a period has no
-            // ambiguity worth a suggestion popup, so it converts directly
-            // instead of going through the candidate-list flow. If a word
-            // is still mid-suggestion, "." finalizes it first (same as
-            // space today) rather than leaving it stranded as romanized
-            // text.
-            if (language === "bn" && e.key === ".") {
+            // Formal Bengali/Hindi full stop ("।", purnochched/poorna
+            // viram) -- typed as a plain "." like every phonetic typing
+            // tool, but a period has no ambiguity worth a suggestion
+            // popup, so it converts directly instead of going through the
+            // candidate-list flow. If a word is still mid-suggestion, "."
+            // finalizes it first (same as space today) rather than
+            // leaving it stranded as romanized text.
+            if (usesTransliteration(language) && e.key === ".") {
               e.preventDefault()
               if (active && suggestions.length > 0) {
                 acceptSuggestion(selectedIndex, "।")
@@ -129,7 +138,7 @@ export const ApplicationEditor = forwardRef<
               }
               return
             }
-            if (language !== "bn" || !active || suggestions.length === 0) return
+            if (!usesTransliteration(language) || !active || suggestions.length === 0) return
             if (e.key === "ArrowDown") {
               e.preventDefault()
               setSelectedIndex((i) => Math.min(i + 1, suggestions.length - 1))
@@ -149,8 +158,8 @@ export const ApplicationEditor = forwardRef<
           }}
         />
       </EditorContainer>
-      {language === "bn" && (
-        <BengaliSuggestionPopup
+      {usesTransliteration(language) && (
+        <TransliterationSuggestionPopup
           suggestions={suggestions}
           selectedIndex={selectedIndex}
           onSelect={(i) => acceptSuggestion(i)}

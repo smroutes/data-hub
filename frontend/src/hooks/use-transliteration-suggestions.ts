@@ -1,10 +1,12 @@
 import { useCallback, useRef, useState } from "react"
 import type { PlateEditor } from "platejs/react"
 import { RangeApi } from "platejs"
-import { transliterate } from "@/lib/bengali-engine"
+import { transliterate as transliterateBengali } from "@/lib/bengali-engine"
 
-export interface BengaliSuggestion {
-  bengali: string
+export type TransliterationLanguage = "bn" | "hi"
+
+export interface TransliterationSuggestion {
+  text: string
   roman: string
 }
 
@@ -18,9 +20,24 @@ interface WordRange {
   focus: Point
 }
 
-// Keyed by exact romanized word -- typing tends to reuse the same common
-// words ("ami", "amar", "ekhane"...) constantly, so most lookups after the
-// first become instant instead of a fresh network round-trip every time.
+// itc: Google Input Tools' per-language code. localEngine: an optional
+// zero-latency phonetic engine rendered immediately while the network
+// request is in flight -- only Bengali has one (avro-phonetic, the
+// well-established scheme Bengali typists already know). Hindi relies on
+// Google's response alone: measured consistently at ~120-150ms, fast
+// enough that a lower-quality local guess (the only alternative found,
+// indic-transliterator's devanagari output -- e.g. "dhanyawad" ->
+// "धञॉअद" instead of "धन्यवाद") isn't worth the risk of it being
+// accidentally accepted before the real candidates arrive.
+const LANGUAGE_CONFIG: Record<TransliterationLanguage, { itc: string; localEngine?: (word: string) => string }> = {
+  bn: { itc: "bn-t-i0-und", localEngine: transliterateBengali },
+  hi: { itc: "hi-t-i0-und" },
+}
+
+// Keyed by "language:word" -- the same romanized word means something
+// different in each language (e.g. "na"), so a plain per-word cache would
+// silently return the wrong script's result once more than one language
+// has been used in a session.
 const suggestionCache = new Map<string, string[]>()
 
 function getCurrentWord(editor: PlateEditor): { word: string; range: WordRange } | null {
@@ -48,42 +65,53 @@ function getCurrentWord(editor: PlateEditor): { word: string; range: WordRange }
 // but public, and sends `Access-Control-Allow-Origin: *`, so it's callable
 // directly from the browser with no server-side proxy needed. Dictionary-
 // backed, so it returns several real candidate words ranked by likelihood
-// (unlike the single deterministic output a pure phonetic-rule engine like
-// avro-phonetic always gives), covering irregular spellings/loanwords the
-// rule engine alone gets wrong.
-async function fetchGoogleSuggestions(word: string, signal: AbortSignal): Promise<string[]> {
-  const cached = suggestionCache.get(word)
+// (unlike the single deterministic output a pure phonetic-rule engine
+// always gives), covering irregular spellings/loanwords a rule engine
+// alone gets wrong.
+async function fetchGoogleSuggestions(
+  word: string,
+  itc: string,
+  cacheKey: string,
+  signal: AbortSignal
+): Promise<string[]> {
+  const cached = suggestionCache.get(cacheKey)
   if (cached) return cached
   try {
-    const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=bn-t-i0-und&num=8&cp=0&cs=1&ie=utf-8&oe=utf-8`
+    const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=${itc}&num=8&cp=0&cs=1&ie=utf-8&oe=utf-8`
     const res = await fetch(url, { signal })
     if (!res.ok) return []
     const data = await res.json()
     const suggestions: string[] = data?.[1]?.[0]?.[1] ?? []
-    suggestionCache.set(word, suggestions)
+    suggestionCache.set(cacheKey, suggestions)
     return suggestions
   } catch {
     return []
   }
 }
 
-function buildSuggestions(word: string, googleResults: string[]): BengaliSuggestion[] {
-  const avro = transliterate(word)
+function buildSuggestions(
+  word: string,
+  googleResults: string[],
+  localEngine?: (word: string) => string
+): TransliterationSuggestion[] {
   const seen = new Set<string>()
-  const suggestions: BengaliSuggestion[] = []
+  const suggestions: TransliterationSuggestion[] = []
 
   for (const g of googleResults) {
     if (!seen.has(g)) {
       seen.add(g)
-      suggestions.push({ bengali: g, roman: word })
+      suggestions.push({ text: g, roman: word })
     }
   }
-  if (!seen.has(avro)) {
-    seen.add(avro)
-    suggestions.push({ bengali: avro, roman: word })
+  if (localEngine) {
+    const local = localEngine(word)
+    if (!seen.has(local)) {
+      seen.add(local)
+      suggestions.push({ text: local, roman: word })
+    }
   }
   if (!seen.has(word)) {
-    suggestions.push({ bengali: word, roman: word })
+    suggestions.push({ text: word, roman: word })
   }
   return suggestions
 }
@@ -95,12 +123,12 @@ function buildSuggestions(word: string, googleResults: string[]): BengaliSuggest
 // keystrokes' requests silently failed and only the final, settled one
 // succeeded. A short debounce -- still far below what a human perceives as
 // lag -- cuts the request count enough to avoid that while barely affecting
-// perceived speed. The instant local avro-phonetic result is NOT debounced;
-// it renders every keystroke since it's free (no network).
+// perceived speed. A local engine's instant result (Bengali only) is NOT
+// debounced; it renders every keystroke since it's free (no network).
 const GOOGLE_DEBOUNCE_MS = 90
 
-export function useBengaliSuggestions(editor: PlateEditor) {
-  const [suggestions, setSuggestions] = useState<BengaliSuggestion[]>([])
+export function useTransliterationSuggestions(editor: PlateEditor, language: TransliterationLanguage) {
+  const [suggestions, setSuggestions] = useState<TransliterationSuggestion[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [wordRange, setWordRange] = useState<WordRange | null>(null)
   const requestGenRef = useRef(0)
@@ -116,7 +144,8 @@ export function useBengaliSuggestions(editor: PlateEditor) {
     setSelectedIndex(0)
   }, [])
 
-  // Called on every keystroke/selection change while Bengali is selected.
+  // Called on every keystroke/selection change while Bengali/Hindi is
+  // selected.
   const onUpdate = useCallback(() => {
     const current = getCurrentWord(editor)
     if (!current) {
@@ -124,24 +153,29 @@ export function useBengaliSuggestions(editor: PlateEditor) {
       return
     }
 
+    const config = LANGUAGE_CONFIG[language]
     setWordRange(current.range)
-    setSuggestions([{ bengali: transliterate(current.word), roman: current.word }])
+    // No local engine (Hindi) -- leave suggestions empty until Google
+    // responds rather than showing nothing useful; the popup just doesn't
+    // appear yet, which is fine given the ~120-150ms turnaround.
+    setSuggestions(config.localEngine ? [{ text: config.localEngine(current.word), roman: current.word }] : [])
     setSelectedIndex(0)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     abortRef.current?.abort()
     const gen = ++requestGenRef.current
+    const cacheKey = `${language}:${current.word}`
 
     debounceRef.current = setTimeout(() => {
       const controller = new AbortController()
       abortRef.current = controller
-      fetchGoogleSuggestions(current.word, controller.signal).then((googleResults) => {
+      fetchGoogleSuggestions(current.word, config.itc, cacheKey, controller.signal).then((googleResults) => {
         if (requestGenRef.current !== gen) return
-        setSuggestions(buildSuggestions(current.word, googleResults))
+        setSuggestions(buildSuggestions(current.word, googleResults, config.localEngine))
         setSelectedIndex(0)
       })
     }, GOOGLE_DEBOUNCE_MS)
-  }, [editor, clear])
+  }, [editor, language, clear])
 
   const acceptSuggestion = useCallback(
     (index: number, trailing = "") => {
@@ -149,7 +183,7 @@ export function useBengaliSuggestions(editor: PlateEditor) {
       if (!wordRange || !suggestion) return
       editor.delete({ at: wordRange })
       editor.select(wordRange.anchor)
-      editor.insertText(suggestion.bengali + trailing)
+      editor.insertText(suggestion.text + trailing)
       clear()
     },
     [editor, wordRange, suggestions, clear]
