@@ -394,10 +394,11 @@ export function AIApplicationWriter() {
                       onFocus={(e) => e.target.select()}
                       onBlur={commitTitleEdit}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault()
-                          commitTitleEdit()
-                        } else if (e.key === "Escape") {
+                        // Enter isn't treated as a commit/submit key here --
+                        // finalizing an edit happens by clicking away or (once
+                        // built) the Save Application button, not by pressing
+                        // Enter.
+                        if (e.key === "Escape") {
                           e.preventDefault()
                           setIsEditingTitle(false)
                         }
