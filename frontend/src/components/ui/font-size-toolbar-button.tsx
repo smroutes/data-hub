@@ -19,7 +19,11 @@ import { cn } from '@/lib/utils';
 
 import { ToolbarButton } from './toolbar';
 
-const DEFAULT_FONT_SIZE = '16';
+// Matches the editor's own base text size (ApplicationEditor.tsx's
+// Editor className) -- text without an explicit fontSize mark falls back
+// to this, and it needs to agree with what's actually rendered or the
+// toolbar shows a font size that doesn't match the text on screen.
+const DEFAULT_FONT_SIZE = '18';
 
 const FONT_SIZE_MAP = {
   h1: '36',

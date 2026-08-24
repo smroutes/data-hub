@@ -119,7 +119,7 @@ export const ApplicationEditor = forwardRef<
       <EditorContainer className="h-full !overflow-visible">
         <Editor
           variant="none"
-          className="min-h-[44rem] px-4 py-3 text-base"
+          className="min-h-[44rem] px-4 py-3 text-lg"
           placeholder="Start writing, or describe what you need on the left and click Generate Application."
           onKeyDown={(e) => {
             // Formal Bengali/Hindi full stop ("।", purnochched/poorna
