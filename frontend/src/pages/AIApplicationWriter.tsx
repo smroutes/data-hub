@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import {
   FolderOpen,
@@ -22,8 +22,11 @@ import { ApplicationEditor } from "@/components/editor/ApplicationEditor"
 import type { ApplicationEditorHandle } from "@/components/editor/ApplicationEditor"
 import { cn } from "@/lib/utils"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
+import { useAuth } from "@/lib/AuthContext"
 import { generateApplication, suggestPrompt } from "@/lib/api"
 import { printEditorContent } from "@/lib/editorPrint"
+import { createAiApplication, getAiApplicationBySlug, updateAiApplication } from "@/lib/aiApplicationsApi"
+import type { AiApplication } from "@/lib/aiApplicationsApi"
 
 type Language = "bn" | "en" | "hi"
 
@@ -116,16 +119,18 @@ const CATEGORIES = [
 
 export function AIApplicationWriter() {
   useDocumentTitle("AI Application Writer")
+  const { slug } = useParams<{ slug: string }>()
+  const navigate = useNavigate()
+  const { session } = useAuth()
   const [prompt, setPrompt] = useState("")
   const [language, setLanguage] = useState<Language>("bn")
   const [category, setCategory] = useState("")
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState("")
   const [resultTitle, setResultTitle] = useState<string | null>(null)
-  // User edits are local-only for now (no save endpoint yet -- that needs
-  // the DB redesign this is deferring to), so this just overrides the
-  // display; it isn't persisted anywhere and resets whenever a fresh
-  // title is extracted from a new generation.
+  // Title edits apply to local state immediately; persisted the same way
+  // everything else is -- on the next auto-draft-after-generate or
+  // explicit Save, not on every keystroke.
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState("")
   const titleInputRef = useRef<HTMLInputElement>(null)
@@ -138,6 +143,57 @@ export function AIApplicationWriter() {
   const editorRef = useRef<ApplicationEditorHandle>(null)
   const typedGeneratingTitle = useTypewriter(GENERATING_MESSAGE[language].title, generating)
 
+  // Whether the editor currently holds anything worth printing/saving --
+  // seeded directly whenever we set `result` ourselves (generate/load/
+  // clear), and kept live after that via ApplicationEditor's
+  // onContentChange for hand-typed edits that never went through a
+  // generation at all.
+  const [hasContent, setHasContent] = useState(false)
+
+  // Persisted-document state -- null/none until this compose session has
+  // been saved at least once (either the auto-draft after a first
+  // successful generation, or an explicit Save).
+  const [docId, setDocId] = useState<string | null>(null)
+  const [docVersion, setDocVersion] = useState<number | null>(null)
+  const [docStatus, setDocStatus] = useState<AiApplication["status"] | null>(null)
+  const [docTokens, setDocTokens] = useState({ suggest: 0, generate: 0 })
+  // Suggestion-call token spend accrued since the last time it was folded
+  // into a save -- ghost-text suggestions fire far more often than saves,
+  // so this batches them up rather than writing to the DB on every one.
+  const suggestTokensAccruedRef = useRef(0)
+
+  const [loadingDoc, setLoadingDoc] = useState(Boolean(slug))
+  const [loadError, setLoadError] = useState<"not_found" | "error" | null>(null)
+
+  useEffect(() => {
+    if (!slug || !session) return
+    setLoadingDoc(true)
+    setLoadError(null)
+    getAiApplicationBySlug(session, slug)
+      .then((doc) => {
+        if (!doc) {
+          setLoadError("not_found")
+          return
+        }
+        setDocId(doc.id)
+        setDocVersion(doc.version)
+        setDocStatus(doc.status)
+        setDocTokens({ suggest: doc.suggest_tokens_used, generate: doc.generate_tokens_used })
+        setPrompt(doc.prompt)
+        setLanguage(doc.language)
+        setCategory(doc.category ?? "")
+        setResult(doc.content_markdown)
+        setResultTitle(doc.title)
+        setHasContent(Boolean(doc.content_markdown.trim()))
+        setResultVersion((v) => v + 1)
+      })
+      .catch(() => setLoadError("error"))
+      .finally(() => setLoadingDoc(false))
+    // Only the URL param and session identity should re-trigger a load --
+    // not the various setters above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, session])
+
   // Debounced ghost-text autocomplete (Groq) -- clears immediately on any
   // edit so a stale suggestion never lingers against changed text, then
   // fetches a fresh one after the user pauses typing.
@@ -147,7 +203,8 @@ export function AIApplicationWriter() {
     if (prompt.trim().length < 3 || generating) return
 
     suggestTimer.current = setTimeout(async () => {
-      const s = await suggestPrompt(prompt, language, category || null)
+      const { suggestion: s, totalTokens } = await suggestPrompt(prompt, language, category || null)
+      suggestTokensAccruedRef.current += totalTokens
       setSuggestion(s)
     }, 600)
 
@@ -167,6 +224,59 @@ export function AIApplicationWriter() {
     }
   }
 
+  // Fires immediately after a successful generation -- creates the draft
+  // row the very first time (and moves the URL to /ai-writer/<slug>), or
+  // folds new content/tokens into the existing doc on a regenerate.
+  // Deliberately best-effort: never awaited by the caller, and any
+  // failure here must not affect the already-successful generation the
+  // user is looking at -- the DB droplet being briefly unreachable should
+  // never break Generate itself.
+  async function persistAfterGenerate(content: string, title: string | null, generateTokens: number) {
+    if (!session) return
+    const pendingSuggest = suggestTokensAccruedRef.current
+    try {
+      if (!docId) {
+        const created = await createAiApplication(session, {
+          title: title ?? DEFAULT_RESULT_TITLE,
+          prompt: prompt.trim(),
+          language,
+          category: category || null,
+          content_markdown: content,
+          status: "draft",
+          suggest_tokens_used: pendingSuggest,
+          generate_tokens_used: generateTokens,
+        })
+        suggestTokensAccruedRef.current = 0
+        setDocId(created.id)
+        setDocVersion(created.version)
+        setDocStatus(created.status)
+        setDocTokens({ suggest: created.suggest_tokens_used, generate: created.generate_tokens_used })
+        navigate(`/ai-writer/${created.slug}`, { replace: true })
+        return
+      }
+      if (docVersion == null) return
+      // Regenerating into an existing doc updates content/tokens but never
+      // downgrades an already-"saved" status back to "draft" -- status is
+      // simply omitted from this payload, so it's left exactly as-is.
+      const result = await updateAiApplication(session, docId, docVersion, {
+        title: title ?? DEFAULT_RESULT_TITLE,
+        prompt: prompt.trim(),
+        language,
+        category: category || null,
+        content_markdown: content,
+        suggest_tokens_used: docTokens.suggest + pendingSuggest,
+        generate_tokens_used: docTokens.generate + generateTokens,
+      })
+      if ("conflict" in result) return // best-effort -- surfaced properly on explicit Save instead
+      suggestTokensAccruedRef.current = 0
+      setDocVersion(result.version)
+      setDocStatus(result.status)
+      setDocTokens({ suggest: result.suggest_tokens_used, generate: result.generate_tokens_used })
+    } catch {
+      // Swallowed on purpose -- see function comment.
+    }
+  }
+
   async function handleGenerate() {
     if (!prompt.trim() || generating) return
     // Otherwise the ghost-text suggestion (and its ready-to-accept hint)
@@ -179,10 +289,13 @@ export function AIApplicationWriter() {
     setResultTitle(null)
     setIsEditingTitle(false)
     try {
-      const text = await generateApplication(prompt.trim(), language, category || null)
+      const { application: text, totalTokens } = await generateApplication(prompt.trim(), language, category || null)
+      const title = extractTitleFromApplication(text)
       setResult(text)
-      setResultTitle(extractTitleFromApplication(text))
+      setResultTitle(title)
+      setHasContent(Boolean(text.trim()))
       setResultVersion((v) => v + 1)
+      void persistAfterGenerate(text, title, totalTokens)
     } catch (err) {
       // duration: Infinity -- this can explain exactly why generation
       // didn't produce a letter (e.g. an unsupported/off-topic request), so
@@ -196,12 +309,72 @@ export function AIApplicationWriter() {
     }
   }
 
+  async function handleSave() {
+    if (!session || generating) return
+    const content = (editorRef.current?.getMarkdown() ?? result).trim()
+    if (!content) return
+    const title = resultTitle ?? DEFAULT_RESULT_TITLE
+    const pendingSuggest = suggestTokensAccruedRef.current
+    try {
+      if (!docId) {
+        const created = await createAiApplication(session, {
+          title,
+          prompt: prompt.trim(),
+          language,
+          category: category || null,
+          content_markdown: content,
+          status: "saved",
+          suggest_tokens_used: pendingSuggest,
+          generate_tokens_used: 0,
+        })
+        suggestTokensAccruedRef.current = 0
+        setDocId(created.id)
+        setDocVersion(created.version)
+        setDocStatus(created.status)
+        setDocTokens({ suggest: created.suggest_tokens_used, generate: created.generate_tokens_used })
+        navigate(`/ai-writer/${created.slug}`, { replace: true })
+        toast.success("Saved.")
+        return
+      }
+      if (docVersion == null) return
+      const result = await updateAiApplication(session, docId, docVersion, {
+        title,
+        content_markdown: content,
+        status: "saved",
+        suggest_tokens_used: docTokens.suggest + pendingSuggest,
+      })
+      if ("conflict" in result) {
+        toast.error("This application was changed elsewhere. Reload to see the latest version before saving.", {
+          duration: Infinity,
+          action: { label: "Reload", onClick: () => window.location.reload() },
+        })
+        return
+      }
+      suggestTokensAccruedRef.current = 0
+      setDocVersion(result.version)
+      setDocStatus(result.status)
+      setDocTokens({ suggest: result.suggest_tokens_used, generate: result.generate_tokens_used })
+      toast.success("Saved.")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save.", { duration: Infinity })
+    }
+  }
+
   function handleClear() {
     setPrompt("")
     setCategory("")
     setResult("")
     setResultTitle(null)
     setIsEditingTitle(false)
+    setHasContent(false)
+    // Resets which document (if any) is currently open -- without this, a
+    // later Save after Clear could overwrite the doc that was just
+    // cleared, since docId/docVersion would still point at it.
+    setDocId(null)
+    setDocVersion(null)
+    setDocStatus(null)
+    setDocTokens({ suggest: 0, generate: 0 })
+    suggestTokensAccruedRef.current = 0
     // Plate only reads its initial value once at construction, so clearing
     // `result` alone doesn't touch the already-mounted editor -- the old
     // application stayed visible in the canvas even though the title/state
@@ -209,6 +382,7 @@ export function AIApplicationWriter() {
     // genuinely empty initialMarkdown, the same mechanism handleGenerate
     // already uses to load in new content.
     setResultVersion((v) => v + 1)
+    if (slug) navigate("/ai-writer")
   }
 
   async function handlePrint() {
@@ -249,17 +423,43 @@ export function AIApplicationWriter() {
               Describe the application you want to create and AI will draft it for you.
             </p>
           </div>
-          {/* "My Applications" (the saved-applications list) is later work --
-              this links nowhere yet. */}
-          <Button variant="outline" disabled>
-            <FolderOpen className="size-4" />
-            My Applications
+          <Button variant="outline" asChild>
+            <Link to="/ai-writer/list">
+              <FolderOpen className="size-4" />
+              My Applications
+            </Link>
           </Button>
         </div>
+
+        {loadError && (
+          <div className="mt-10 flex flex-col items-center gap-2 rounded-lg border bg-muted/30 py-16 text-center">
+            <p className="font-medium text-foreground">
+              {loadError === "not_found" ? "Application not found." : "Couldn't load this application."}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {loadError === "not_found"
+                ? "It may have been removed, or the link is incorrect."
+                : "Something went wrong loading it -- try again in a moment."}
+            </p>
+            <Button variant="outline" className="mt-2" asChild>
+              <Link to="/ai-writer/list">
+                <FolderOpen className="size-4" />
+                Back to My Applications
+              </Link>
+            </Button>
+          </div>
+        )}
+
+        {loadingDoc && !loadError && (
+          <div className="mt-10 flex justify-center py-16">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
 
         {/* Canvas gets more room than the prompt panel -- it'll host a
             full rich-text editor for the generated application later, and
             needs the extra width more than the prompt form does. */}
+        {!loadingDoc && !loadError && (
         <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_3fr]">
           <Card>
             <CardHeader>
@@ -425,14 +625,13 @@ export function AIApplicationWriter() {
                   )}
                 </CardTitle>
                 <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" onClick={handlePrint} disabled={generating}>
+                  <Button variant="outline" size="sm" onClick={handlePrint} disabled={generating || !hasContent}>
                     <Printer className="size-3.5" />
                     Print
                   </Button>
-                  {/* Saving to a real applications list is later work. */}
-                  <Button size="sm" disabled>
+                  <Button size="sm" onClick={handleSave} disabled={generating || !hasContent}>
                     <Save className="size-3.5" />
-                    Save Application
+                    {docStatus === "saved" ? "Save" : "Save Application"}
                   </Button>
                 </div>
               </div>
@@ -467,11 +666,18 @@ export function AIApplicationWriter() {
                   ApplicationEditor for why (Plate's initial value isn't
                   re-read on prop changes). */}
               <div className="min-h-[44rem] rounded-b-xl bg-white text-neutral-900">
-                <ApplicationEditor key={resultVersion} ref={editorRef} initialMarkdown={result} language={language} />
+                <ApplicationEditor
+                  key={resultVersion}
+                  ref={editorRef}
+                  initialMarkdown={result}
+                  language={language}
+                  onContentChange={(markdown) => setHasContent(Boolean(markdown.trim()))}
+                />
               </div>
             </CardContent>
           </Card>
         </div>
+        )}
 
         <div className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-amber-700">
           <TriangleAlert className="size-3.5 shrink-0" />

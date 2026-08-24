@@ -63,8 +63,8 @@ function usesTransliteration(language: Language): language is TransliterationLan
 // without generating anything first.
 export const ApplicationEditor = forwardRef<
   ApplicationEditorHandle,
-  { initialMarkdown: string; language: Language }
->(function ApplicationEditor({ initialMarkdown, language }, ref) {
+  { initialMarkdown: string; language: Language; onContentChange?: (markdown: string) => void }
+>(function ApplicationEditor({ initialMarkdown, language, onContentChange }, ref) {
   const editor = usePlateEditor({
     plugins: PLUGINS,
     value: initialMarkdown.trim()
@@ -103,7 +103,16 @@ export const ApplicationEditor = forwardRef<
   )
 
   return (
-    <Plate editor={editor} onChange={() => usesTransliteration(language) && onUpdate()}>
+    <Plate
+      editor={editor}
+      onChange={() => {
+        if (usesTransliteration(language)) onUpdate()
+        // Lets the parent track "is there anything to Print/Save" against
+        // live edits, not just the last generation/load -- e.g. someone
+        // hand-typing into a blank canvas without ever clicking Generate.
+        onContentChange?.(editor.api.markdown.serialize())
+      }}
+    >
       {/* !overflow-visible: EditorContainer defaults to overflow-y-auto,
           which -- regardless of whether it ever actually overflows --
           makes it the toolbar's "nearest scrolling ancestor" for

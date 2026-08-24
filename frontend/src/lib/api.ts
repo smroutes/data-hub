@@ -15,19 +15,25 @@ export async function searchRecords(
   return res.json()
 }
 
+export interface SuggestPromptResult {
+  suggestion: string
+  totalTokens: number
+}
+
 export async function suggestPrompt(
   text: string,
   language: string,
   category: string | null
-): Promise<string> {
+): Promise<SuggestPromptResult> {
   const res = await fetch("/api/suggest-prompt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, language, category }),
   })
-  if (!res.ok) return "" // best-effort -- never surface an error for this
-  const data = (await res.json()) as { suggestion: string }
-  return data.suggestion
+  // best-effort -- never surface an error for this
+  if (!res.ok) return { suggestion: "", totalTokens: 0 }
+  const data = (await res.json()) as { suggestion: string; usage: { total_tokens: number } | null }
+  return { suggestion: data.suggestion, totalTokens: data.usage?.total_tokens ?? 0 }
 }
 
 // A bare "Request failed (502)" with no further detail means the request
@@ -56,11 +62,16 @@ function friendlyErrorMessage(status: number, detail?: unknown): string {
   return "Something went wrong. Please try again."
 }
 
+export interface GenerateApplicationResult {
+  application: string
+  totalTokens: number
+}
+
 export async function generateApplication(
   prompt: string,
   language: string,
   category: string | null
-): Promise<string> {
+): Promise<GenerateApplicationResult> {
   const res = await fetch("/api/generate-application", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -70,6 +81,6 @@ export async function generateApplication(
     const body = await res.json().catch(() => null)
     throw new Error(friendlyErrorMessage(res.status, body?.detail))
   }
-  const data = (await res.json()) as { application: string }
-  return data.application
+  const data = (await res.json()) as { application: string; usage: { total_tokens: number } | null }
+  return { application: data.application, totalTokens: data.usage?.total_tokens ?? 0 }
 }
