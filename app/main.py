@@ -6,6 +6,8 @@ from fastapi import FastAPI, HTTPException, Request
 from openai import BadRequestError, OpenAI
 from pydantic import BaseModel, Field
 
+from app.pii_mask import mask_pii, unmask_pii
+
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 CACHE_DIR = os.environ.get("CACHE_DIR", "/app/cache")
 
@@ -419,6 +421,13 @@ def generate_application(body: GenerateApplicationRequest):
         raise HTTPException(status_code=400, detail="prompt is required")
     language_name = LANGUAGE_NAMES.get(body.language, LANGUAGE_NAMES["bn"])
 
+    # Neither Groq (the validation gate below) nor DeepSeek (the actual
+    # generation call) is a system this app controls -- a citizen's Aadhaar,
+    # mobile, PAN, or Voter ID number typed into the description must never
+    # leave this process in the clear. Masked here, unmasked back into the
+    # generated letter once DeepSeek returns it below; see pii_mask.py.
+    prompt, pii_map = mask_pii(prompt)
+
     rejection_reason = validate_application_request(prompt, body.category)
     if rejection_reason:
         raise HTTPException(status_code=422, detail=rejection_reason)
@@ -470,6 +479,7 @@ def generate_application(body: GenerateApplicationRequest):
     # so this is defensive rather than assumed.
     usage = getattr(completion, "usage", None)
     total_tokens = getattr(usage, "total_tokens", None) if usage else None
+    text = unmask_pii(text, pii_map)
 
     if not text:
         raise HTTPException(status_code=502, detail="AI generation returned no content")
@@ -548,10 +558,16 @@ def suggest_prompt(body: SuggestPromptRequest):
         return {"suggestion": "", "usage": None}
     language_name = LANGUAGE_NAMES.get(body.language, LANGUAGE_NAMES["bn"])
 
+    # Masked for the outbound Groq call only -- `text` itself stays
+    # unmasked below since strip_echoed_prefix compares against what the
+    # user actually typed. See generate_application()'s identical
+    # reasoning and pii_mask.py for what's covered.
+    masked_text, pii_map = mask_pii(text)
+
     system_prompt = f"{SUGGEST_PROMPT_SYSTEM_PROMPT}\n\nContinue their text in {language_name}."
-    user_prompt = text
+    user_prompt = masked_text
     if body.category:
-        user_prompt = f"Application type: {body.category}\n\nText so far: {text}"
+        user_prompt = f"Application type: {body.category}\n\nText so far: {masked_text}"
 
     client = get_ai_client("groq")
     messages = [
@@ -587,7 +603,8 @@ def suggest_prompt(body: SuggestPromptRequest):
     # rendered as one run-on word with no gap. Only add/remove a boundary
     # space ourselves when the model's own choice would otherwise double up
     # or omit it entirely.
-    suggestion = strip_echoed_prefix(text, (completion.choices[0].message.content or "").rstrip())
+    raw_suggestion = unmask_pii((completion.choices[0].message.content or "").rstrip(), pii_map)
+    suggestion = strip_echoed_prefix(text, raw_suggestion)
     if suggestion:
         if text[-1:].isspace():
             suggestion = suggestion.lstrip()
