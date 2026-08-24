@@ -27,6 +27,7 @@ import { generateApplication, suggestPrompt } from "@/lib/api"
 import { printEditorContent } from "@/lib/editorPrint"
 import { createAiApplication, getAiApplicationBySlug, updateAiApplication } from "@/lib/aiApplicationsApi"
 import type { AiApplication } from "@/lib/aiApplicationsApi"
+import { recordUsageEvent } from "@/lib/usageApi"
 
 type Language = "bn" | "en" | "hi"
 
@@ -229,6 +230,7 @@ export function AIApplicationWriter() {
     suggestTimer.current = setTimeout(async () => {
       const { suggestion: s, totalTokens } = await suggestPrompt(prompt, language, category || null)
       suggestTokensAccruedRef.current += totalTokens
+      if (session) void recordUsageEvent(session, { kind: "suggest", tokens: totalTokens, application_id: docId })
       setSuggestion(s)
     }, 600)
 
@@ -324,6 +326,7 @@ export function AIApplicationWriter() {
       setHasContent(Boolean(text.trim()))
       setResultVersion((v) => v + 1)
       void persistAfterGenerate(text, title, totalTokens)
+      if (session) void recordUsageEvent(session, { kind: "generate", tokens: totalTokens, application_id: docId })
     } catch (err) {
       // duration: Infinity -- this can explain exactly why generation
       // didn't produce a letter (e.g. an unsupported/off-topic request), so

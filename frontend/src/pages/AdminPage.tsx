@@ -9,6 +9,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { DataTable } from "@/components/ui/data-table"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
+import { AdminUsageTab } from "@/components/AdminUsageTab"
+import { AdminPresenceTab } from "@/components/AdminPresenceTab"
 import { useAuth } from "@/lib/AuthContext"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import {
@@ -48,7 +50,7 @@ function formatDateTime(iso: string) {
 export function AdminPage() {
   useDocumentTitle("Admin")
   const { session, isAdmin, accessLoading } = useAuth()
-  const [tab, setTab] = useState<"users" | "activity">("users")
+  const [tab, setTab] = useState<"users" | "activity" | "usage" | "presence">("users")
   const [error, setError] = useState("")
 
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -176,10 +178,12 @@ export function AdminPage() {
             <CardDescription>Manage staff access and review activity.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "users" | "activity")}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "users" | "activity" | "usage" | "presence")}>
               <TabsList className="mb-4">
                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
                 <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="usage">Usage</TabsTrigger>
+                <TabsTrigger value="presence">Online Now</TabsTrigger>
               </TabsList>
 
               {error && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -294,6 +298,14 @@ export function AdminPage() {
                     </div>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="usage">
+                <AdminUsageTab staff={staff} />
+              </TabsContent>
+
+              <TabsContent value="presence">
+                <AdminPresenceTab staff={staff} />
               </TabsContent>
             </Tabs>
           </CardContent>
