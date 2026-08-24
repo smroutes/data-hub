@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle } from "react"
 import { createSlateEditor } from "platejs"
 import { serializeHtml } from "platejs/static"
 import { Plate, usePlateEditor } from "platejs/react"
-import { MarkdownPlugin } from "@platejs/markdown"
+import { MarkdownKit } from "@/components/editor/plugins/markdown-kit"
 import { BasicNodesKit } from "@/components/editor/plugins/basic-nodes-kit"
 import { AlignKit } from "@/components/editor/plugins/align-kit"
 import { FontKit } from "@/components/editor/plugins/font-kit"
@@ -29,7 +29,7 @@ const PLUGINS = [
   ...ListKit,
   ...TableKit,
   ...EmojiKit,
-  MarkdownPlugin,
+  MarkdownKit,
   ...FixedToolbarKit,
 ]
 
@@ -68,7 +68,7 @@ export const ApplicationEditor = forwardRef<
   const editor = usePlateEditor({
     plugins: PLUGINS,
     value: initialMarkdown.trim()
-      ? (editor) => editor.getApi(MarkdownPlugin).markdown.deserialize(initialMarkdown)
+      ? (editor) => editor.getApi(MarkdownKit).markdown.deserialize(initialMarkdown)
       : undefined,
   })
 

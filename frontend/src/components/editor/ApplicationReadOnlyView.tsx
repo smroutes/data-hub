@@ -3,7 +3,7 @@ import { createSlateEditor } from "platejs"
 import { serializeHtml } from "platejs/static"
 import { usePlateEditor } from "platejs/react"
 import { Plate } from "platejs/react"
-import { MarkdownPlugin } from "@platejs/markdown"
+import { MarkdownKit } from "@/components/editor/plugins/markdown-kit"
 import { BasicNodesKit } from "@/components/editor/plugins/basic-nodes-kit"
 import { AlignKit } from "@/components/editor/plugins/align-kit"
 import { FontKit } from "@/components/editor/plugins/font-kit"
@@ -26,7 +26,7 @@ const PLUGINS = [
   ...LinkKit,
   ...ListKit,
   ...TableKit,
-  MarkdownPlugin,
+  MarkdownKit,
 ]
 
 export interface ApplicationReadOnlyViewHandle {
@@ -50,7 +50,7 @@ export const ApplicationReadOnlyView = forwardRef<ApplicationReadOnlyViewHandle,
     const editor = usePlateEditor({
       plugins: PLUGINS,
       value: markdown.trim()
-        ? (editor) => editor.getApi(MarkdownPlugin).markdown.deserialize(markdown)
+        ? (editor) => editor.getApi(MarkdownKit).markdown.deserialize(markdown)
         : undefined,
     })
 
