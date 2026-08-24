@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { PlateEditor } from "platejs/react"
 import { RangeApi } from "platejs"
 import { transliterate as transliterateBengali } from "@/lib/bengali-engine"
@@ -148,6 +148,14 @@ export function useTransliterationSuggestions(editor: PlateEditor, language: Tra
   const abortRef = useRef<AbortController | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const suppressedWordRef = useRef<SuppressedWord | null>(null)
+  // Mirrors selectedIndex for the async Google response below, which
+  // closes over whatever selectedIndex was at the time the debounced
+  // fetch was scheduled -- without a ref, it can't see arrow-key
+  // navigation that happened while the request was in flight.
+  const selectedIndexRef = useRef(0)
+  useEffect(() => {
+    selectedIndexRef.current = selectedIndex
+  }, [selectedIndex])
 
   const clear = useCallback(() => {
     requestGenRef.current++
@@ -203,8 +211,20 @@ export function useTransliterationSuggestions(editor: PlateEditor, language: Tra
       abortRef.current = controller
       fetchGoogleSuggestions(current.word, config.itc, cacheKey, controller.signal).then((googleResults) => {
         if (requestGenRef.current !== gen) return
-        setSuggestions(buildSuggestions(current.word, googleResults, config.localEngine))
-        setSelectedIndex(0)
+        const built = buildSuggestions(current.word, googleResults, config.localEngine)
+        // Google's response (~120-150ms) frequently lands after the user
+        // has already arrow-key-navigated the instant local-engine list
+        // that renders first -- resetting to index 0 here silently threw
+        // that selection away and snapped the highlight back to the top,
+        // which read as the popup randomly "jumping" while navigating.
+        // Re-find the previously selected candidate by text in the merged
+        // list instead of blindly resetting.
+        setSuggestions((prev) => {
+          const prevSelected = prev[selectedIndexRef.current]
+          const matchedIndex = prevSelected ? built.findIndex((s) => s.text === prevSelected.text) : -1
+          setSelectedIndex(matchedIndex === -1 ? 0 : matchedIndex)
+          return built
+        })
       })
     }, GOOGLE_DEBOUNCE_MS)
   }, [editor, language, clear])
