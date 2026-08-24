@@ -41,6 +41,27 @@ const PROMPT_PLACEHOLDER: Record<Language, string> = {
 // so this can't be bypassed by calling the API directly.
 const MAX_PROMPT_LENGTH = 2000
 
+// The generated letter already states its own subject in whatever
+// language it was written in ("বিষয়:" / "Subject:" / "विषय:") -- reusing
+// that as the card header avoids a second LLM call (even a cheap one)
+// just to summarize what the first call already said, and it's
+// automatically in the right language since it's the model's own text,
+// not a translation we'd have to get right ourselves.
+const MAX_HEADER_TITLE_LENGTH = 60
+
+function extractTitleFromApplication(markdown: string): string | null {
+  const match = /^\**(?:বিষয়|subject|विषय)\**\s*[:ঃ]\s*(.+)$/im.exec(markdown)
+  if (!match) return null
+  const title = match[1]
+    .replace(/\*\*/g, "")
+    .replace(/[।.॥]+\s*$/, "")
+    .trim()
+  if (!title) return null
+  return title.length > MAX_HEADER_TITLE_LENGTH
+    ? title.slice(0, MAX_HEADER_TITLE_LENGTH - 1).trimEnd() + "…"
+    : title
+}
+
 const CATEGORIES = [
   "Identity Documents",
   "Financial Assistance",
@@ -58,6 +79,7 @@ export function AIApplicationWriter() {
   const [category, setCategory] = useState("")
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState("")
+  const [resultTitle, setResultTitle] = useState<string | null>(null)
   const [suggestion, setSuggestion] = useState("")
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Plate's `value` is only read once at construction -- bumping this key
@@ -104,9 +126,11 @@ export function AIApplicationWriter() {
     setSuggestion("")
     setGenerating(true)
     setResult("")
+    setResultTitle(null)
     try {
       const text = await generateApplication(prompt.trim(), language, category || null)
       setResult(text)
+      setResultTitle(extractTitleFromApplication(text))
       setResultVersion((v) => v + 1)
     } catch (err) {
       // duration: Infinity -- this can explain exactly why generation
@@ -125,6 +149,7 @@ export function AIApplicationWriter() {
     setPrompt("")
     setCategory("")
     setResult("")
+    setResultTitle(null)
   }
 
   async function handlePrint() {
@@ -277,8 +302,10 @@ export function AIApplicationWriter() {
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="size-4 text-brand" />
-                  AI Generated Application
+                  <Sparkles className="size-4 shrink-0 text-brand" />
+                  <span className="truncate" title={resultTitle ?? undefined}>
+                    {resultTitle ?? "AI Generated Application"}
+                  </span>
                 </CardTitle>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handlePrint} disabled={generating}>
