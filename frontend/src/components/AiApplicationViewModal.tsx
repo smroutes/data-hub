@@ -104,7 +104,12 @@ export function AiApplicationViewModal({
         <DialogHeader className="shrink-0 gap-2 p-6 pb-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <DialogTitle className="truncate" title={application.title}>
+              {/* leading-normal overrides DialogTitle's default
+                  leading-none -- Bengali (and other Indic scripts)
+                  routinely draw vowel signs/conjuncts above the roman
+                  em-box, which a line-height of exactly 1 doesn't leave
+                  room for, clipping the top of the glyphs. */}
+              <DialogTitle className="truncate leading-normal" title={application.title}>
                 {application.title}
               </DialogTitle>
               <div className="mt-1.5">

@@ -584,7 +584,12 @@ export function AIApplicationWriter() {
                     competing with the shrink-0 button group), then again on
                     the span itself (a flex item of CardTitle's own icon+text
                     row) -- `truncate` alone can't override either. */}
-                <CardTitle className="flex min-w-0 flex-1 items-center gap-2 text-base">
+                {/* leading-normal overrides CardTitle's default
+                    leading-none -- Bengali (and other Indic scripts)
+                    routinely draw vowel signs/conjuncts above the roman
+                    em-box, which a line-height of exactly 1 doesn't leave
+                    room for, clipping the top of the glyphs. */}
+                <CardTitle className="flex min-w-0 flex-1 items-center gap-2 text-base leading-normal">
                   <Sparkles className="size-4 shrink-0 text-brand" />
                   {isEditingTitle ? (
                     <Input
