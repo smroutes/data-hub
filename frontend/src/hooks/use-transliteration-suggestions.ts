@@ -127,6 +127,19 @@ function buildSuggestions(
 // debounced; it renders every keystroke since it's free (no network).
 const GOOGLE_DEBOUNCE_MS = 90
 
+// A word/cursor position that was just deliberately resolved to plain
+// English (the identity fallback candidate), so onUpdate knows to leave it
+// alone instead of re-suggesting.
+interface SuppressedWord {
+  path: number[]
+  offset: number
+  word: string
+}
+
+function pointsEqual(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i])
+}
+
 export function useTransliterationSuggestions(editor: PlateEditor, language: TransliterationLanguage) {
   const [suggestions, setSuggestions] = useState<TransliterationSuggestion[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -134,6 +147,7 @@ export function useTransliterationSuggestions(editor: PlateEditor, language: Tra
   const requestGenRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suppressedWordRef = useRef<SuppressedWord | null>(null)
 
   const clear = useCallback(() => {
     requestGenRef.current++
@@ -152,6 +166,24 @@ export function useTransliterationSuggestions(editor: PlateEditor, language: Tra
       clear()
       return
     }
+
+    // The word/position the user just deliberately accepted as plain
+    // English -- its reinserted text is still Latin letters ending right
+    // at the cursor, which would otherwise immediately re-match here and
+    // reopen the same suggestion list forever. Skip it once; typing
+    // anything further changes the word and/or cursor position, which
+    // naturally drops out of this check and resumes normal suggestions.
+    const suppressed = suppressedWordRef.current
+    if (
+      suppressed &&
+      current.word === suppressed.word &&
+      current.range.focus.offset === suppressed.offset &&
+      pointsEqual(current.range.focus.path, suppressed.path)
+    ) {
+      clear()
+      return
+    }
+    suppressedWordRef.current = null
 
     const config = LANGUAGE_CONFIG[language]
     setWordRange(current.range)
@@ -184,6 +216,19 @@ export function useTransliterationSuggestions(editor: PlateEditor, language: Tra
       editor.delete({ at: wordRange })
       editor.select(wordRange.anchor)
       editor.insertText(suggestion.text + trailing)
+      // Only the identity fallback (plain typed word, always last in the
+      // list) needs suppressing -- every other candidate replaces the
+      // Latin word with non-Latin script, which already fails to re-match
+      // on its own. A trailing character (space/Enter accept) also moves
+      // the cursor off the word, so it doesn't need this either.
+      suppressedWordRef.current =
+        !trailing && suggestion.text === suggestion.roman
+          ? {
+              path: wordRange.anchor.path,
+              offset: wordRange.anchor.offset + suggestion.text.length,
+              word: suggestion.text,
+            }
+          : null
       clear()
     },
     [editor, wordRange, suggestions, clear]
