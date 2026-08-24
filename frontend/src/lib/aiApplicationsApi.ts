@@ -14,6 +14,7 @@ export interface AiApplication {
   version: number
   suggest_tokens_used: number
   generate_tokens_used: number
+  generate_count: number
   created_by: string
   updated_by: string | null
   created_at: string
@@ -44,6 +45,7 @@ export type AiApplicationInput = Partial<
     | "status"
     | "suggest_tokens_used"
     | "generate_tokens_used"
+    | "generate_count"
   >
 >
 

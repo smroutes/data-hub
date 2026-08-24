@@ -158,6 +158,7 @@ export function AIApplicationWriter() {
   const [docVersion, setDocVersion] = useState<number | null>(null)
   const [docStatus, setDocStatus] = useState<AiApplication["status"] | null>(null)
   const [docTokens, setDocTokens] = useState({ suggest: 0, generate: 0 })
+  const [generateCount, setGenerateCount] = useState(0)
   // Suggestion-call token spend accrued since the last time it was folded
   // into a save -- ghost-text suggestions fire far more often than saves,
   // so this batches them up rather than writing to the DB on every one.
@@ -176,6 +177,7 @@ export function AIApplicationWriter() {
       setDocVersion(null)
       setDocStatus(null)
       setDocTokens({ suggest: 0, generate: 0 })
+      setGenerateCount(0)
       suggestTokensAccruedRef.current = 0
       setPrompt("")
       setCategory("")
@@ -200,6 +202,7 @@ export function AIApplicationWriter() {
         setDocVersion(doc.version)
         setDocStatus(doc.status)
         setDocTokens({ suggest: doc.suggest_tokens_used, generate: doc.generate_tokens_used })
+        setGenerateCount(doc.generate_count)
         setPrompt(doc.prompt)
         setLanguage(doc.language)
         setCategory(doc.category ?? "")
@@ -266,12 +269,14 @@ export function AIApplicationWriter() {
           status: "draft",
           suggest_tokens_used: pendingSuggest,
           generate_tokens_used: generateTokens,
+          generate_count: 1,
         })
         suggestTokensAccruedRef.current = 0
         setDocId(created.id)
         setDocVersion(created.version)
         setDocStatus(created.status)
         setDocTokens({ suggest: created.suggest_tokens_used, generate: created.generate_tokens_used })
+        setGenerateCount(created.generate_count)
         navigate(`/ai-writer/${created.slug}`, { replace: true })
         return
       }
@@ -287,12 +292,14 @@ export function AIApplicationWriter() {
         content_markdown: content,
         suggest_tokens_used: docTokens.suggest + pendingSuggest,
         generate_tokens_used: docTokens.generate + generateTokens,
+        generate_count: generateCount + 1,
       })
       if ("conflict" in result) return // best-effort -- surfaced properly on explicit Save instead
       suggestTokensAccruedRef.current = 0
       setDocVersion(result.version)
       setDocStatus(result.status)
       setDocTokens({ suggest: result.suggest_tokens_used, generate: result.generate_tokens_used })
+      setGenerateCount(result.generate_count)
     } catch {
       // Swallowed on purpose -- see function comment.
     }
@@ -398,6 +405,7 @@ export function AIApplicationWriter() {
     setDocVersion(null)
     setDocStatus(null)
     setDocTokens({ suggest: 0, generate: 0 })
+    setGenerateCount(0)
     suggestTokensAccruedRef.current = 0
     // Plate only reads its initial value once at construction, so clearing
     // `result` alone doesn't touch the already-mounted editor -- the old
@@ -486,9 +494,19 @@ export function AIApplicationWriter() {
         {!loadingDoc && !loadError && (
         <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_3fr]">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Describe your application</CardTitle>
-              <CardDescription>Tell AI what type of application you want to write.</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Describe your application</CardTitle>
+                <CardDescription>Tell AI what type of application you want to write.</CardDescription>
+              </div>
+              {/* Only worth surfacing once someone's actually regenerated --
+                  the common case (generate once, done) doesn't need a
+                  "Generated 1 time" badge cluttering the header. */}
+              {generateCount > 1 && (
+                <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground">
+                  Generated {generateCount} times
+                </span>
+              )}
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="relative">
