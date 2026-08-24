@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import type { ColumnDef } from "@tanstack/react-table"
 import {
@@ -121,8 +121,42 @@ export function AIApplicationsListPage() {
   const searchRef = useRef<HTMLInputElement>(null)
   const [applications, setApplications] = useState<AiApplication[]>([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(10)
+  // Page/rows-per-page live in the URL (?page=2&pageSize=20), not plain
+  // component state -- so reloading, sharing a link, or hitting back
+  // actually lands back on the same page instead of always resetting to
+  // page 1. 1-indexed in the URL (human-facing) but 0-indexed everywhere
+  // else in this file to match the existing pagination math below.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = Math.max(0, (Number(searchParams.get("page")) || 1) - 1)
+  const pageSizeParam = Number(searchParams.get("pageSize"))
+  const pageSize = [10, 20, 50].includes(pageSizeParam) ? pageSizeParam : 10
+
+  function setPage(next: number | ((current: number) => number)) {
+    setSearchParams(
+      (prev) => {
+        const value = typeof next === "function" ? next(page) : next
+        const params = new URLSearchParams(prev)
+        if (value <= 0) params.delete("page")
+        else params.set("page", String(value + 1))
+        return params
+      },
+      { replace: true },
+    )
+  }
+
+  function setRowsPerPage(value: number) {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev)
+        if (value === 10) params.delete("pageSize")
+        else params.set("pageSize", String(value))
+        params.delete("page")
+        return params
+      },
+      { replace: true },
+    )
+  }
+
   const [search, setSearch] = useState("")
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState<StatusFilter>("")
@@ -161,11 +195,6 @@ export function AIApplicationsListPage() {
   function setSortOrder(value: AiApplicationSort) {
     setPage(0)
     setSort(value)
-  }
-
-  function setRowsPerPage(value: number) {
-    setPage(0)
-    setPageSize(value)
   }
 
   function refresh() {
@@ -320,7 +349,14 @@ export function AIApplicationsListPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button
+                  variant="outline"
+                  className={
+                    status
+                      ? "border-brand/40 bg-brand/10 text-brand hover:bg-brand/15 hover:text-brand"
+                      : undefined
+                  }
+                >
                   <Filter className="size-3.5" />
                   {status ? STATUS_LABELS[status] : "Filter"}
                 </Button>
@@ -335,7 +371,17 @@ export function AIApplicationsListPage() {
             </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button
+                  variant="outline"
+                  className={
+                    // updated_desc ("Latest") is the default sort -- only
+                    // flag the button as active when something else is
+                    // picked, same convention as the status Filter button.
+                    sort !== "updated_desc"
+                      ? "border-brand/40 bg-brand/10 text-brand hover:bg-brand/15 hover:text-brand"
+                      : undefined
+                  }
+                >
                   <ArrowDownUp className="size-3.5" />
                   Sort: {SORT_LABELS[sort]}
                 </Button>
