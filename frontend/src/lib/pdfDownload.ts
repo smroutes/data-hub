@@ -16,6 +16,12 @@ const PAGE_HEIGHT_PX = 1056
 const MARGIN_Y_PX = 67
 const MARGIN_X_PX = 86
 
+// buildPrintDocument's 14.5pt body size reads fine on an actual printed
+// page, but the same size rasterized into a PDF (viewed on-screen, not
+// held in hand) reads oversized -- scaled down for this export path only,
+// same reasoning as the margin override above.
+const PDF_FONT_SIZE_PT = 11
+
 // jsPDF/html2canvas are only needed for this one button, and together are
 // a meaningful chunk of bundle weight -- dynamically imported so they never
 // load for anyone who doesn't click Download.
@@ -67,6 +73,7 @@ export async function downloadPdf(bodyHtml: string, title: string): Promise<void
     body.style.boxSizing = "border-box"
     body.style.padding = `${MARGIN_Y_PX}px ${MARGIN_X_PX}px`
     body.style.width = `${PAGE_WIDTH_PX}px`
+    body.style.fontSize = `${PDF_FONT_SIZE_PT}pt`
 
     const canvas = await html2canvas(body, {
       backgroundColor: "#ffffff",
