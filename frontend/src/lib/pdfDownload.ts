@@ -1,10 +1,24 @@
 import { buildPrintDocument } from "@/lib/editorPrint"
 
-// US Letter at 96 CSS px/in -- matches the @page sizing buildPrintDocument
-// already assumes for the browser print path, so this stays pixel-for-pixel
-// consistent with what Print produces instead of inventing a second layout.
-const PAGE_WIDTH_PX = 816
-const PAGE_HEIGHT_PX = 1056
+// A4 (210mm x 297mm) at 96 CSS px/in -- matches buildPrintDocument's own
+// `@page { size: A4 }` for the browser print path, so this stays
+// pixel-for-pixel consistent with what Print produces instead of
+// inventing a second layout.
+const PAGE_WIDTH_PX = 794
+const PAGE_HEIGHT_PX = 1123
+
+// jsPDF's own "px" unit doesn't mean CSS px (96/in) -- it's a legacy 72/in
+// mapping, so handing it PAGE_WIDTH_PX/PAGE_HEIGHT_PX directly for the
+// actual PDF page size produced a page ~33% too large in real-world
+// dimensions (still LOOKED fine on screen since a PDF viewer fits it to
+// the window either way, only visible if measured or physically printed).
+// Converting to pt ourselves (72/in, the unit jsPDF's page geometry
+// actually uses) up front sidesteps that entirely -- only the page/image
+// geometry passed to jsPDF uses this; DOM layout and html2canvas capture
+// stay in real CSS px throughout.
+const PX_TO_PT = 0.75
+const PAGE_WIDTH_PT = PAGE_WIDTH_PX * PX_TO_PT
+const PAGE_HEIGHT_PT = PAGE_HEIGHT_PX * PX_TO_PT
 
 // Matches buildPrintDocument's `@page { margin: 0.7in 0.9in }` at 96 CSS
 // px/in. @page margins are a paged-media concept the real browser print
@@ -36,9 +50,9 @@ async function loadPdfLibs() {
 // Renders the same document buildPrintDocument feeds to the browser print
 // dialog into a hidden, same-origin iframe (identical technique to
 // printHtml.ts, just without ever calling print()), rasterizes it with
-// html2canvas, and slices the result into US-Letter-sized pages in a real
-// jsPDF file -- so Download actually saves a .pdf straight to disk instead
-// of handing control to the browser's print dialog the way Print does.
+// html2canvas, and slices the result into A4-sized pages in a real jsPDF
+// file -- so Download actually saves a .pdf straight to disk instead of
+// handing control to the browser's print dialog the way Print does.
 export async function downloadPdf(bodyHtml: string, title: string): Promise<void> {
   const { jsPDF, html2canvas } = await loadPdfLibs()
   const html = buildPrintDocument(bodyHtml, title)
@@ -81,21 +95,21 @@ export async function downloadPdf(bodyHtml: string, title: string): Promise<void
       windowWidth: PAGE_WIDTH_PX,
     })
 
-    const pdf = new jsPDF({ unit: "px", format: [PAGE_WIDTH_PX, PAGE_HEIGHT_PX] })
-    const imgWidth = PAGE_WIDTH_PX
+    const pdf = new jsPDF({ unit: "pt", format: [PAGE_WIDTH_PT, PAGE_HEIGHT_PT] })
+    const imgWidth = PAGE_WIDTH_PT
     const imgHeight = (canvas.height * imgWidth) / canvas.width
     const imgData = canvas.toDataURL("image/png")
 
     let heightLeft = imgHeight
     let position = 0
     pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight)
-    heightLeft -= PAGE_HEIGHT_PX
+    heightLeft -= PAGE_HEIGHT_PT
 
     while (heightLeft > 0) {
-      position -= PAGE_HEIGHT_PX
-      pdf.addPage([PAGE_WIDTH_PX, PAGE_HEIGHT_PX])
+      position -= PAGE_HEIGHT_PT
+      pdf.addPage([PAGE_WIDTH_PT, PAGE_HEIGHT_PT])
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight)
-      heightLeft -= PAGE_HEIGHT_PX
+      heightLeft -= PAGE_HEIGHT_PT
     }
 
     pdf.save(`${title || "application"}.pdf`)

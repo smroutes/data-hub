@@ -72,7 +72,7 @@ export function buildPrintDocument(bodyHtml: string, title: string): string {
     font-weight: 700;
     font-style: normal;
   }
-  @page { margin: 0.7in 0.9in; }
+  @page { size: A4; margin: 0.7in 0.9in; }
   body {
     font-family: "Noto Sans Bengali", "Noto Sans Devanagari", Arial, sans-serif;
     font-size: 14.5pt;
