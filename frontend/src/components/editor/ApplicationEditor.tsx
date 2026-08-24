@@ -141,10 +141,10 @@ export const ApplicationEditor = forwardRef<
             if (!usesTransliteration(language) || !active || suggestions.length === 0) return
             if (e.key === "ArrowDown") {
               e.preventDefault()
-              setSelectedIndex((i) => Math.min(i + 1, suggestions.length - 1))
+              setSelectedIndex((i) => (i + 1) % suggestions.length)
             } else if (e.key === "ArrowUp") {
               e.preventDefault()
-              setSelectedIndex((i) => Math.max(i - 1, 0))
+              setSelectedIndex((i) => (i - 1 + suggestions.length) % suggestions.length)
             } else if (e.key === "Enter" || e.key === "Tab") {
               e.preventDefault()
               acceptSuggestion(selectedIndex)
