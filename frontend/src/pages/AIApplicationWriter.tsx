@@ -343,16 +343,29 @@ export function AIApplicationWriter() {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* min-w-0: a CSS grid item defaults to min-width:auto same as a
+              flex item -- without this, this Card could grow past its
+              lg:grid-cols-[2fr_3fr] track to fit the title's full
+              untruncated content instead of respecting the column width,
+              which is what was defeating the truncate/min-w-0 fixes
+              further down the tree. */}
+          <Card className="min-w-0">
             <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="flex items-center gap-2 text-base">
+              <div className="flex items-center justify-between gap-2">
+                {/* min-w-0 at BOTH levels is load-bearing: a flex item
+                    defaults to min-width:auto, so without it here it grows
+                    to fit its full untruncated content instead of shrinking
+                    -- first on CardTitle (a flex item of the outer row,
+                    competing with the shrink-0 button group), then again on
+                    the span itself (a flex item of CardTitle's own icon+text
+                    row) -- `truncate` alone can't override either. */}
+                <CardTitle className="flex min-w-0 flex-1 items-center gap-2 text-base">
                   <Sparkles className="size-4 shrink-0 text-brand" />
-                  <span className="truncate" title={resultTitle ?? undefined}>
+                  <span className="min-w-0 truncate" title={resultTitle ?? undefined}>
                     {resultTitle ?? "AI Generated Application"}
                   </span>
                 </CardTitle>
-                <div className="flex gap-2">
+                <div className="flex shrink-0 gap-2">
                   <Button variant="outline" size="sm" onClick={handlePrint} disabled={generating}>
                     <Printer className="size-3.5" />
                     Print
