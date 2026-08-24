@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { AiApplicationStatusBadge } from "@/components/AiApplicationStatusBadge"
+import { AiApplicationViewModal } from "@/components/AiApplicationViewModal"
 import { useAuth } from "@/lib/AuthContext"
 import { archiveAiApplication, countAiApplicationsByStatus, listAiApplications } from "@/lib/aiApplicationsApi"
 import type { AiApplication, AiApplicationSort } from "@/lib/aiApplicationsApi"
@@ -129,6 +130,8 @@ export function AIApplicationsListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [stats, setStats] = useState<{ total: number; draft: number; saved: number; archived: number } | null>(null)
+  const [viewOpen, setViewOpen] = useState(false)
+  const [viewTarget, setViewTarget] = useState<AiApplication | null>(null)
 
   // Matches the ⌘K hint shown in the search box -- Ctrl on non-Mac.
   useEffect(() => {
@@ -245,10 +248,17 @@ export function AIApplicationsListPage() {
       header: () => <span className="block text-right">Actions</span>,
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" className="size-8" asChild title="View">
-            <Link to={`/ai-writer/${row.original.slug}`}>
-              <Eye className="size-4" />
-            </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            title="View"
+            onClick={() => {
+              setViewTarget(row.original)
+              setViewOpen(true)
+            }}
+          >
+            <Eye className="size-4" />
           </Button>
           <Button variant="ghost" size="icon" className="size-8" asChild title="Edit">
             <Link to={`/ai-writer/${row.original.slug}`}>
@@ -448,6 +458,8 @@ export function AIApplicationsListPage() {
         </div>
       </main>
       <Footer />
+
+      <AiApplicationViewModal open={viewOpen} onOpenChange={setViewOpen} application={viewTarget} />
     </div>
   )
 }

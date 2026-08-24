@@ -20,6 +20,19 @@ export interface AiApplication {
   updated_at: string
 }
 
+export interface AiApplicationVersion {
+  id: string
+  application_id: string
+  version: number
+  title: string
+  content_markdown: string
+  language: "bn" | "en" | "hi"
+  category: string | null
+  status: "draft" | "saved" | "archived"
+  saved_by: string | null
+  created_at: string
+}
+
 export type AiApplicationInput = Partial<
   Pick<
     AiApplication,
@@ -180,4 +193,18 @@ export async function archiveAiApplication(
   expectedVersion: number
 ): Promise<AiApplication | AiApplicationConflict> {
   return updateAiApplication(session, id, expectedVersion, { status: "archived" })
+}
+
+// Newest first -- the version dropdown in the view modal defaults to the
+// current/latest snapshot.
+export async function listAiApplicationVersions(
+  session: Session,
+  applicationId: string
+): Promise<AiApplicationVersion[]> {
+  const res = await fetch(
+    `${API_BASE}/rest/ai_application_versions?application_id=eq.${applicationId}&order=version.desc`,
+    { headers: headers(session) }
+  )
+  if (!res.ok) throw new Error(await parseError(res))
+  return (await res.json()) as AiApplicationVersion[]
 }
