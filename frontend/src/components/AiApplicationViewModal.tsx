@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
-import { toast } from "sonner"
 import { Download, Loader2, Pencil, Printer, X } from "lucide-react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -85,17 +84,18 @@ export function AiApplicationViewModal({
     printEditorContent(html, application!.title)
   }
 
+  // There's no PDF library in this project (embedding one just for this
+  // button, with correct Bengali/Devanagari shaping, is a lot of weight
+  // for one feature) -- instead this reuses the same print pipeline as
+  // Print itself (fonts, page styling, and all), which is exactly what
+  // printHtml.ts's title-swap trick already exists for: Chrome's print
+  // dialog offers "Save as PDF" as a destination, and names the resulting
+  // file after document.title at the moment print() fires. So "Download"
+  // opens that dialog pre-rendered with the same content Print shows,
+  // rather than saving a raw .html file straight to disk.
   async function handleDownload() {
     const html = (await viewRef.current?.getPrintHtml()) ?? ""
-    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>${application!.title}</title></head><body>${html}</body></html>`
-    const blob = new Blob([doc], { type: "text/html" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${application!.title || "application"}.html`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success("Downloaded.")
+    printEditorContent(html, application!.title)
   }
 
   return (
