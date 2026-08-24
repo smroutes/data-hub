@@ -6,6 +6,16 @@ import { buildPrintDocument } from "@/lib/editorPrint"
 const PAGE_WIDTH_PX = 816
 const PAGE_HEIGHT_PX = 1056
 
+// Matches buildPrintDocument's `@page { margin: 0.7in 0.9in }` at 96 CSS
+// px/in. @page margins are a paged-media concept the real browser print
+// dialog honors on its own -- html2canvas just rasterizes the DOM as laid
+// out, with no notion of page margins at all, so without this the content
+// was bleeding edge-to-edge on every exported PDF. Applied as body padding
+// here (PDF export only) rather than touching buildPrintDocument itself,
+// which would double the inset on the actual print path.
+const MARGIN_Y_PX = 67
+const MARGIN_X_PX = 86
+
 // jsPDF/html2canvas are only needed for this one button, and together are
 // a meaningful chunk of bundle weight -- dynamically imported so they never
 // load for anyone who doesn't click Download.
@@ -54,6 +64,9 @@ export async function downloadPdf(bodyHtml: string, title: string): Promise<void
 
     const body = iframe.contentDocument?.body
     if (!body) return
+    body.style.boxSizing = "border-box"
+    body.style.padding = `${MARGIN_Y_PX}px ${MARGIN_X_PX}px`
+    body.style.width = `${PAGE_WIDTH_PX}px`
 
     const canvas = await html2canvas(body, {
       backgroundColor: "#ffffff",
