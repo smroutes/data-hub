@@ -464,6 +464,13 @@ def generate_application(body: GenerateApplicationRequest):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
 
+    # `completion` here is whichever call actually produced `text` (the
+    # deepseek-chat fallback if the first one ran dry) -- usage is read
+    # from that same object. Not every response is guaranteed to carry it,
+    # so this is defensive rather than assumed.
+    usage = getattr(completion, "usage", None)
+    total_tokens = getattr(usage, "total_tokens", None) if usage else None
+
     if not text:
         raise HTTPException(status_code=502, detail="AI generation returned no content")
     # The model is instructed to emit this exact sentinel instead of a
@@ -475,7 +482,10 @@ def generate_application(body: GenerateApplicationRequest):
     if text.startswith("UNSUPPORTED_REQUEST:"):
         reason = text.removeprefix("UNSUPPORTED_REQUEST:").strip()
         raise HTTPException(status_code=422, detail=reason or "This doesn't look like a government application request.")
-    return {"application": text}
+    return {
+        "application": text,
+        "usage": {"total_tokens": total_tokens} if total_tokens is not None else None,
+    }
 
 
 def strip_echoed_prefix(user_text: str, suggestion: str) -> str:
@@ -535,7 +545,7 @@ def suggest_prompt(body: SuggestPromptRequest):
     # Debounced-while-typing from the frontend -- too little to work with
     # yet, and not worth a Groq call for.
     if len(text.strip()) < 3:
-        return {"suggestion": ""}
+        return {"suggestion": "", "usage": None}
     language_name = LANGUAGE_NAMES.get(body.language, LANGUAGE_NAMES["bn"])
 
     system_prompt = f"{SUGGEST_PROMPT_SYSTEM_PROMPT}\n\nContinue their text in {language_name}."
@@ -569,7 +579,7 @@ def suggest_prompt(body: SuggestPromptRequest):
         # Auto-suggest is a nice-to-have that fires constantly while
         # typing -- fail quietly (empty suggestion) instead of surfacing
         # an error for something this non-critical.
-        return {"suggestion": ""}
+        return {"suggestion": "", "usage": None}
 
     # rstrip only, not a full strip -- a leading space from the model is
     # meaningful here (it's concatenated directly onto `text` client-side),
@@ -583,4 +593,9 @@ def suggest_prompt(body: SuggestPromptRequest):
             suggestion = suggestion.lstrip()
         elif not suggestion[0].isspace() and suggestion[0] not in ".,!?;:)]}'\"।":
             suggestion = " " + suggestion
-    return {"suggestion": suggestion}
+    usage = getattr(completion, "usage", None)
+    total_tokens = getattr(usage, "total_tokens", None) if usage else None
+    return {
+        "suggestion": suggestion,
+        "usage": {"total_tokens": total_tokens} if total_tokens is not None else None,
+    }
