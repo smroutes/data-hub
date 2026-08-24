@@ -9,6 +9,7 @@ import {
   Printer,
   Save,
   Sparkles,
+  TriangleAlert,
 } from "lucide-react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
@@ -472,7 +473,12 @@ export function AIApplicationWriter() {
           </Card>
         </div>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
+        <div className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-amber-700">
+          <TriangleAlert className="size-3.5 shrink-0" />
+          AI can make mistakes. Please review the generated application before using it.
+        </div>
+
+        <p className="mt-2 text-center text-xs text-muted-foreground">
           Looking for something else? <Link to="/" className="text-brand hover:underline">Back to Home</Link>
         </p>
       </main>
