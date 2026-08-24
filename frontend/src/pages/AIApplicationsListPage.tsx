@@ -1,21 +1,41 @@
-import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { useEffect, useRef, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronLeft, ChevronRight, FilterX, Loader2, RefreshCw, Search, Sparkles } from "lucide-react"
+import {
+  Archive,
+  ArrowDownUp,
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Eye,
+  Filter,
+  FileText,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Search,
+  Sparkles,
+} from "lucide-react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { DataTable } from "@/components/ui/data-table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { AiApplicationStatusBadge } from "@/components/AiApplicationStatusBadge"
 import { useAuth } from "@/lib/AuthContext"
-import { countAiApplicationsByStatus, listAiApplications } from "@/lib/aiApplicationsApi"
-import type { AiApplication } from "@/lib/aiApplicationsApi"
+import { archiveAiApplication, countAiApplicationsByStatus, listAiApplications } from "@/lib/aiApplicationsApi"
+import type { AiApplication, AiApplicationSort } from "@/lib/aiApplicationsApi"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
-
-const PAGE_SIZE = 20
 
 const LANGUAGE_LABELS: Record<AiApplication["language"], string> = {
   bn: "বাংলা",
@@ -23,36 +43,71 @@ const LANGUAGE_LABELS: Record<AiApplication["language"], string> = {
   hi: "हिंदी",
 }
 
+const SORT_LABELS: Record<AiApplicationSort, string> = {
+  updated_desc: "Latest",
+  updated_asc: "Oldest",
+  title_asc: "Title (A-Z)",
+}
+
 type StatusFilter = "" | "draft" | "saved" | "archived"
 
-function formatDate(iso: string) {
+const STATUS_LABELS: Record<StatusFilter, string> = {
+  "": "All statuses",
+  draft: "Draft",
+  saved: "Saved",
+  archived: "Archived",
+}
+
+// Purely decorative color cycle for each row's leading document icon --
+// there's no per-application color stored, this just keeps the list from
+// looking monotone the same way the design mockup's row icons do.
+const ROW_ICON_COLORS = [
+  "bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-400",
+  "bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
+  "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
+  "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400",
+  "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400",
+]
+
+function formatRelativeDate(iso: string) {
+  const then = new Date(iso).getTime()
+  const diffMs = Date.now() - then
+  const minute = 60_000
+  const hour = 60 * minute
+  const day = 24 * hour
+  const week = 7 * day
+  if (diffMs < minute) return "Just now"
+  if (diffMs < hour) return `${Math.floor(diffMs / minute)} min ago`
+  if (diffMs < day) return `${Math.floor(diffMs / hour)} hour${diffMs < 2 * hour ? "" : "s"} ago`
+  if (diffMs < 2 * day) return "Yesterday"
+  if (diffMs < week) return `${Math.floor(diffMs / day)} days ago`
+  if (diffMs < 4 * week) return `${Math.floor(diffMs / week)} week${diffMs < 2 * week ? "" : "s"} ago`
   const d = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
-function sortableHeader(label: string) {
-  return function SortableHeader({ column }: { column: { toggleSorting: (asc: boolean) => void; getIsSorted: () => false | "asc" | "desc" } }) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-3 h-8"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        {label}
-        <ArrowUpDown className="size-3.5" />
-      </Button>
-    )
-  }
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  className,
+}: {
+  label: string
+  value: number
+  icon: typeof Sparkles
+  className: string
+}) {
   return (
     <Card>
-      <CardContent className="p-4">
-        <p className="text-2xl font-semibold">{value}</p>
-        <p className="text-sm text-muted-foreground">{label}</p>
+      <CardContent className="flex items-center gap-3 p-4">
+        <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${className}`}>
+          <Icon className="size-5" />
+        </span>
+        <div>
+          <p className="text-2xl font-semibold">{value}</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
+        </div>
       </CardContent>
     </Card>
   )
@@ -61,15 +116,31 @@ function StatCard({ label, value }: { label: string; value: number }) {
 export function AIApplicationsListPage() {
   useDocumentTitle("All Applications")
   const { session } = useAuth()
+  const navigate = useNavigate()
+  const searchRef = useRef<HTMLInputElement>(null)
   const [applications, setApplications] = useState<AiApplication[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
   const [search, setSearch] = useState("")
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState<StatusFilter>("")
+  const [sort, setSort] = useState<AiApplicationSort>("updated_desc")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [stats, setStats] = useState<{ total: number; draft: number; saved: number; archived: number } | null>(null)
+
+  // Matches the ⌘K hint shown in the search box -- Ctrl on non-Mac.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -84,17 +155,20 @@ export function AIApplicationsListPage() {
     setStatus(value)
   }
 
-  function clearFilters() {
+  function setSortOrder(value: AiApplicationSort) {
     setPage(0)
-    setSearch("")
-    setQuery("")
-    setStatus("")
+    setSort(value)
+  }
+
+  function setRowsPerPage(value: number) {
+    setPage(0)
+    setPageSize(value)
   }
 
   function refresh() {
     if (!session) return
     setLoading(true)
-    listAiApplications(session, { page, pageSize: PAGE_SIZE, query, status: status || undefined })
+    listAiApplications(session, { page, pageSize, query, status: status || undefined, sort })
       .then(({ rows, total }) => {
         setApplications(rows)
         setTotal(total)
@@ -103,7 +177,7 @@ export function AIApplicationsListPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(refresh, [session, page, query, status])
+  useEffect(refresh, [session, page, pageSize, query, status, sort])
 
   useEffect(() => {
     if (!session) return
@@ -115,31 +189,36 @@ export function AIApplicationsListPage() {
       })
   }, [session, applications])
 
-  const hasFilters = Boolean(search || query || status)
+  async function handleArchive(app: AiApplication) {
+    if (!session) return
+    const result = await archiveAiApplication(session, app.id, app.version)
+    if ("conflict" in result) {
+      toast.error("This application was changed elsewhere. Reload and try again.", { duration: Infinity })
+      return
+    }
+    toast.success("Archived.")
+    refresh()
+  }
 
-  const from = total === 0 ? 0 : page * PAGE_SIZE + 1
-  const to = Math.min((page + 1) * PAGE_SIZE, total)
-  const hasPrev = page > 0
-  const hasNext = to < total
+  const from = total === 0 ? 0 : page * pageSize + 1
+  const to = Math.min((page + 1) * pageSize, total)
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   const columns: ColumnDef<AiApplication>[] = [
     {
       accessorKey: "title",
-      header: sortableHeader("Title"),
-      cell: ({ row }) => (
-        <Link
-          to={`/ai-writer/${row.original.slug}`}
-          className="inline-flex items-center gap-2 font-medium text-primary hover:underline"
-        >
-          <Sparkles className="size-3.5 shrink-0" />
-          {row.original.title}
-        </Link>
-      ),
-    },
-    {
-      accessorKey: "category",
-      header: "Category",
-      cell: ({ getValue }) => (getValue() as string) || "—",
+      header: "Title",
+      cell: ({ row }) => {
+        const colors = ROW_ICON_COLORS[row.index % ROW_ICON_COLORS.length]
+        return (
+          <Link to={`/ai-writer/${row.original.slug}`} className="group flex items-center gap-3">
+            <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${colors}`}>
+              <FileText className="size-4.5" />
+            </span>
+            <span className="font-medium text-foreground group-hover:underline">{row.original.title}</span>
+          </Link>
+        )
+      },
     },
     {
       accessorKey: "language",
@@ -147,14 +226,56 @@ export function AIApplicationsListPage() {
       cell: ({ getValue }) => LANGUAGE_LABELS[getValue() as AiApplication["language"]],
     },
     {
+      accessorKey: "category",
+      header: "Category",
+      cell: ({ getValue }) => (getValue() as string) || "—",
+    },
+    {
+      accessorKey: "updated_at",
+      header: "Last Edited",
+      cell: ({ getValue }) => formatRelativeDate(getValue() as string),
+    },
+    {
       accessorKey: "status",
       header: "Status",
       cell: ({ getValue }) => <AiApplicationStatusBadge status={getValue() as AiApplication["status"]} />,
     },
     {
-      accessorKey: "updated_at",
-      header: sortableHeader("Updated At"),
-      cell: ({ getValue }) => formatDate(getValue() as string),
+      id: "actions",
+      header: () => <span className="block text-right">Actions</span>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="icon" className="size-8" asChild title="View">
+            <Link to={`/ai-writer/${row.original.slug}`}>
+              <Eye className="size-4" />
+            </Link>
+          </Button>
+          <Button variant="ghost" size="icon" className="size-8" asChild title="Edit">
+            <Link to={`/ai-writer/${row.original.slug}`}>
+              <Pencil className="size-4" />
+            </Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8" title="More">
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => navigate(`/ai-writer/${row.original.slug}`)}>
+                <Pencil className="size-3.5" />
+                Open
+              </DropdownMenuItem>
+              {row.original.status !== "archived" && (
+                <DropdownMenuItem onSelect={() => handleArchive(row.original)}>
+                  <Archive className="size-3.5" />
+                  Archive
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
     },
   ]
 
@@ -162,73 +283,89 @@ export function AIApplicationsListPage() {
     <div className="flex min-h-svh flex-col bg-background">
       <Header />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">All Applications</h1>
             <p className="text-muted-foreground">View, search, and manage all your AI generated applications.</p>
           </div>
-          <Button asChild>
-            <Link to="/ai-writer">
-              <Sparkles className="size-4" />
-              New Application
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-64">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchRef}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search applications..."
+                className="pl-8 pr-12"
+              />
+              <kbd className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                ⌘K
+              </kbd>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Filter className="size-3.5" />
+                  {status ? STATUS_LABELS[status] : "Filter"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(Object.keys(STATUS_LABELS) as StatusFilter[]).map((value) => (
+                  <DropdownMenuItem key={value || "all"} onSelect={() => setStatusFilter(value)}>
+                    {STATUS_LABELS[value]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <ArrowDownUp className="size-3.5" />
+                  Sort: {SORT_LABELS[sort]}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(Object.keys(SORT_LABELS) as AiApplicationSort[]).map((value) => (
+                  <DropdownMenuItem key={value} onSelect={() => setSortOrder(value)}>
+                    {SORT_LABELS[value]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {stats && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="Total Applications" value={stats.total} />
-            <StatCard label="Drafts" value={stats.draft} />
-            <StatCard label="Saved" value={stats.saved} />
-            <StatCard label="Archived" value={stats.archived} />
+            <StatCard
+              label="Total Applications"
+              value={stats.total}
+              icon={Sparkles}
+              className="bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400"
+            />
+            <StatCard
+              label="Drafts"
+              value={stats.draft}
+              icon={ClipboardList}
+              className="bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+            />
+            <StatCard
+              label="Saved"
+              value={stats.saved}
+              icon={Bookmark}
+              className="bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
+            />
+            <StatCard
+              label="Archived"
+              value={stats.archived}
+              icon={Archive}
+              className="bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+            />
           </div>
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Applications</CardTitle>
-            <CardDescription>Applications you've generated and saved with the AI Writer.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 flex flex-wrap items-start gap-3">
-              <div className="max-w-sm flex-1">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search applications..."
-                    className="pl-8"
-                  />
-                </div>
-                {!loading && !error && (
-                  <p className="mt-1 pl-0.5 text-sm text-muted-foreground">
-                    {total} {total === 1 ? "application" : "applications"} found
-                  </p>
-                )}
-              </div>
-              <Select
-                value={status}
-                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="w-auto"
-              >
-                <option value="">All statuses</option>
-                <option value="draft">Draft</option>
-                <option value="saved">Saved</option>
-                <option value="archived">Archived</option>
-              </Select>
-              {hasFilters && (
-                <Button variant="outline" onClick={clearFilters} title="Clear all filters and search">
-                  <FilterX className="size-3.5" />
-                  Clear
-                </Button>
-              )}
-              <Button variant="outline" onClick={refresh} disabled={loading} title="Reload">
-                <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
-                Reload
-              </Button>
-            </div>
-
+          <CardContent className="pt-6">
             {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
             {loading ? (
@@ -242,36 +379,61 @@ export function AIApplicationsListPage() {
                     columns={columns}
                     data={applications}
                     emptyMessage={
-                      hasFilters
+                      query || status
                         ? "No matching applications."
                         : "No saved applications yet -- generate one from the AI Writer."
                     }
                   />
 
                   {total > 0 && (
-                    <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
                       <span>
-                        Showing {from}-{to} of {total}
+                        Showing {from} to {to} of {total} applications
                       </span>
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!hasPrev}
-                          onClick={() => setPage((p) => Math.max(0, p - 1))}
-                        >
-                          <ChevronLeft className="size-3.5" />
-                          Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!hasNext}
-                          onClick={() => setPage((p) => p + 1)}
-                        >
-                          Next
-                          <ChevronRight className="size-3.5" />
-                        </Button>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="size-8"
+                            disabled={page === 0}
+                            onClick={() => setPage((p) => Math.max(0, p - 1))}
+                          >
+                            <ChevronLeft className="size-3.5" />
+                          </Button>
+                          {Array.from({ length: pageCount }, (_, i) => i).map((i) => (
+                            <Button
+                              key={i}
+                              variant={i === page ? "default" : "outline"}
+                              size="icon"
+                              className="size-8"
+                              onClick={() => setPage(i)}
+                            >
+                              {i + 1}
+                            </Button>
+                          ))}
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="size-8"
+                            disabled={page >= pageCount - 1}
+                            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                          >
+                            <ChevronRight className="size-3.5" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span>Rows per page:</span>
+                          <Select
+                            value={String(pageSize)}
+                            onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                            className="w-auto"
+                          >
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                          </Select>
+                        </div>
                       </div>
                     </div>
                   )}

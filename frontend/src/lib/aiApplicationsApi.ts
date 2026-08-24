@@ -87,6 +87,14 @@ export interface AiApplicationsPage {
   total: number
 }
 
+export type AiApplicationSort = "updated_desc" | "updated_asc" | "title_asc"
+
+const SORT_ORDER: Record<AiApplicationSort, string> = {
+  updated_desc: "updated_at.desc",
+  updated_asc: "updated_at.asc",
+  title_asc: "title.asc",
+}
+
 export async function listAiApplications(
   session: Session,
   options: {
@@ -94,14 +102,15 @@ export async function listAiApplications(
     pageSize?: number
     query?: string
     status?: "draft" | "saved" | "archived"
+    sort?: AiApplicationSort
   } = {}
 ): Promise<AiApplicationsPage> {
-  const { page = 0, pageSize = 20, query = "", status } = options
+  const { page = 0, pageSize = 20, query = "", status, sort = "updated_desc" } = options
   const from = page * pageSize
   const to = from + pageSize - 1
 
   const params = new URLSearchParams()
-  params.append("order", "updated_at.desc")
+  params.append("order", SORT_ORDER[sort])
   if (status) params.append("status", `eq.${status}`)
 
   // Title-only -- prompt is stored but deliberately never searched/shown
