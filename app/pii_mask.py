@@ -24,11 +24,20 @@ _PII_PATTERN = re.compile(
     r"|(?P<pan>\b[A-Za-z]{5}[0-9]{4}[A-Za-z]\b)"
     # Voter ID / EPIC: the standard format since the 1990s (3 letters + 7
     # digits, e.g. ABC1234567) -- covers the vast majority of real cards.
-    # There's no single well-documented "new" EPIC format to also match.
     r"|(?P<voter>\b[A-Za-z]{3}[0-9]{7}\b)"
+    # Older slash-delimited EPIC format still seen on some cards, e.g.
+    # "WB/37/264/096671" -- state code / assembly constituency / part
+    # number / serial, each a variable-length run of digits by state.
+    r"|(?P<voter_slash>\b[A-Za-z]{2}/\d{1,3}/\d{1,4}/\d{3,7}\b)"
 )
 
-_LABELS = {"aadhaar": "AADHAAR", "mobile": "MOBILE", "pan": "PAN", "voter": "VOTER_ID"}
+_LABELS = {
+    "aadhaar": "AADHAAR",
+    "mobile": "MOBILE",
+    "pan": "PAN",
+    "voter": "VOTER_ID",
+    "voter_slash": "VOTER_ID",
+}
 
 
 def mask_pii(text: str) -> tuple[str, dict[str, str]]:
