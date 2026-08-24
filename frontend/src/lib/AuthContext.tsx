@@ -5,6 +5,10 @@ import type { LoginResult, Session } from "@/lib/auth"
 import { onSessionExpired } from "@/lib/sessionExpiry"
 import { getMyAccess } from "@/lib/rbacApi"
 import type { Page, StaffAccess } from "@/lib/rbacApi"
+import { sendHeartbeat } from "@/lib/usageApi"
+import { getSelfGeoIp } from "@/lib/geoIp"
+import { getDeviceId } from "@/lib/deviceId"
+import { parseUserAgent } from "@/lib/userAgentInfo"
 
 interface AuthState {
   session: Session | null
@@ -50,6 +54,16 @@ const AuthContext = createContext<AuthState | null>(null)
 // triggering requests that would otherwise surface a 401.
 const EXPIRY_CHECK_INTERVAL_MS = 30_000
 
+// How often to ping staff_presence while a session is open -- feeds the
+// admin "Online now" view. Frequent enough that "last seen" reads as
+// genuinely live, infrequent enough not to be a meaningful load or a
+// second reason to re-hit the geo-IP lookup's free-tier quota.
+const HEARTBEAT_INTERVAL_MS = 60_000
+
+// How long without a real interaction (or the tab being hidden) before a
+// device counts as "idle" rather than "active" in the presence heartbeat.
+const IDLE_THRESHOLD_MS = 2 * 60_000
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -92,6 +106,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!session) return
     setAccess(await getMyAccess(session))
   }, [session])
+
+  // Presence heartbeat for the admin "Online now" view -- geo-IP is looked
+  // up once (cached, see geoIp.ts) rather than on every tick, since the
+  // free-tier lookup is meant to be spent once per session, not once a
+  // minute. Keyed on userId (not the session object) for the same reason
+  // as the access-fetch effect above: a routine token refresh shouldn't
+  // restart this.
+  //
+  // "Active" vs "idle" is tracked here rather than assumed from the
+  // heartbeat firing at all -- the timer keeps running even for a tab
+  // sitting untouched in the background, so idle detection needs its own
+  // signal: the tab must both be visible AND have seen a real user
+  // interaction recently.
+  useEffect(() => {
+    if (!session || !userId) return
+
+    let lastActivityAt = Date.now()
+    function markActive() {
+      lastActivityAt = Date.now()
+    }
+    const activityEvents = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const
+    activityEvents.forEach((e) => window.addEventListener(e, markActive, { passive: true }))
+    document.addEventListener("visibilitychange", markActive)
+
+    const deviceId = getDeviceId()
+    const { os, browser } = parseUserAgent(navigator.userAgent)
+
+    let cancelled = false
+    async function beat() {
+      if (!session) return
+      const geo = await getSelfGeoIp()
+      if (cancelled) return
+      const isActive = document.visibilityState === "visible" && Date.now() - lastActivityAt < IDLE_THRESHOLD_MS
+      void sendHeartbeat(
+        session,
+        userId,
+        deviceId,
+        { os, browser, userAgent: navigator.userAgent, isActive },
+        geo
+      )
+    }
+    void beat()
+    const id = setInterval(beat, HEARTBEAT_INTERVAL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+      activityEvents.forEach((e) => window.removeEventListener(e, markActive))
+      document.removeEventListener("visibilitychange", markActive)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   // Reactive: a request came back 401 (expired/invalid JWT).
   useEffect(() => {

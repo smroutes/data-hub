@@ -1,7 +1,7 @@
 import { API_BASE, userIdFromSession } from "@/lib/auth"
 import type { Session } from "@/lib/auth"
 
-export type Page = "search" | "applications" | "citizens"
+export type Page = "search" | "applications" | "citizens" | "ai_writer"
 
 export interface StaffAccess {
   isAdmin: boolean
@@ -56,6 +56,7 @@ const EMPTY_PERMISSIONS: StaffAccess["permissions"] = {
   search: { read: false, write: false },
   applications: { read: false, write: false },
   citizens: { read: false, write: false },
+  ai_writer: { read: false, write: false },
 }
 
 // The caller's own access -- fetched once per session by AuthContext, not

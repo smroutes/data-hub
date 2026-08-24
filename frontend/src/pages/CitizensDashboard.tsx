@@ -11,7 +11,7 @@ export function CitizensDashboard() {
     <div className="min-h-svh bg-background">
       <Header />
 
-      <main className="mx-auto max-w-5xl px-4 py-10">
+      <main className="mx-auto max-w-7xl px-4 py-10">
         <Card>
           <CardHeader>
             <CardTitle>Signed in</CardTitle>

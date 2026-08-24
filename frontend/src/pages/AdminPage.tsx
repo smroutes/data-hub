@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
 import { ChevronLeft, ChevronRight, Loader2, ShieldAlert } from "lucide-react"
 import { Header } from "@/components/Header"
@@ -9,6 +10,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { DataTable } from "@/components/ui/data-table"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
+import { AdminUsageTab } from "@/components/AdminUsageTab"
+import { AdminPresenceTab } from "@/components/AdminPresenceTab"
 import { useAuth } from "@/lib/AuthContext"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 import {
@@ -20,11 +23,12 @@ import {
 } from "@/lib/rbacApi"
 import type { StaffMember, Page as RbacPage, AuditLogEntry } from "@/lib/rbacApi"
 
-const PAGES: RbacPage[] = ["search", "applications", "citizens"]
+const PAGES: RbacPage[] = ["search", "applications", "citizens", "ai_writer"]
 const PAGE_LABELS: Record<RbacPage, string> = {
   search: "Search",
   applications: "Applications",
   citizens: "Citizens",
+  ai_writer: "AI Writer",
 }
 const AUDIT_PAGE_SIZE = 25
 
@@ -36,6 +40,7 @@ function emptyPerm(): Record<RbacPage, PermEntry> {
     search: { read: false, write: false },
     applications: { read: false, write: false },
     citizens: { read: false, write: false },
+    ai_writer: { read: false, write: false },
   }
 }
 
@@ -43,10 +48,34 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString()
 }
 
+type AdminTab = "users" | "activity" | "usage" | "presence"
+
+// "presence" reads as "online-now" in the URL -- more meaningful to
+// anyone glancing at the address bar or bookmarking it than the internal
+// state name.
+const TAB_SLUGS: Record<AdminTab, string> = {
+  users: "",
+  activity: "activity",
+  usage: "usage",
+  presence: "online-now",
+}
+const SLUG_TABS: Record<string, AdminTab> = {
+  activity: "activity",
+  usage: "usage",
+  "online-now": "presence",
+}
+
 export function AdminPage() {
   useDocumentTitle("Admin")
   const { session, isAdmin, accessLoading } = useAuth()
-  const [tab, setTab] = useState<"users" | "activity">("users")
+  const navigate = useNavigate()
+  const { tab: tabSlug } = useParams<{ tab?: string }>()
+  // Falls back to "users" for both the bare /admin route and any
+  // unrecognized slug, rather than rendering a blank tab.
+  const tab: AdminTab = (tabSlug && SLUG_TABS[tabSlug]) || "users"
+  function setTab(next: AdminTab) {
+    navigate(TAB_SLUGS[next] ? `/admin/${TAB_SLUGS[next]}` : "/admin")
+  }
   const [error, setError] = useState("")
 
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -167,17 +196,19 @@ export function AdminPage() {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <Header />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10">
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Admin</CardTitle>
             <CardDescription>Manage staff access and review activity.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "users" | "activity")}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as AdminTab)}>
               <TabsList className="mb-4">
                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
                 <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="usage">Usage</TabsTrigger>
+                <TabsTrigger value="presence">Online Now</TabsTrigger>
               </TabsList>
 
               {error && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -292,6 +323,14 @@ export function AdminPage() {
                     </div>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="usage">
+                <AdminUsageTab staff={staff} />
+              </TabsContent>
+
+              <TabsContent value="presence">
+                <AdminPresenceTab staff={staff} />
               </TabsContent>
             </Tabs>
           </CardContent>

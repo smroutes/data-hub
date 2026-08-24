@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/sonner"
 import { Header } from "@/components/Header"
 import { SearchPage } from "@/components/SearchPage"
 import { Footer } from "@/components/Footer"
@@ -14,6 +16,8 @@ import { CitizensDashboard } from "@/pages/CitizensDashboard"
 import { ApplicationsTablePage } from "@/pages/ApplicationsTablePage"
 import { AdminPage } from "@/pages/AdminPage"
 import { SettingsPage } from "@/pages/SettingsPage"
+import { AIApplicationWriter } from "@/pages/AIApplicationWriter"
+import { AIApplicationsListPage } from "@/pages/AIApplicationsListPage"
 import { NotFound } from "@/pages/NotFound"
 
 function Search() {
@@ -33,60 +37,87 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <SessionExpiredModal />
-        <NameRequiredModal />
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/as/search"
-            element={
-              <ProtectedRoute page="search">
-                <Search />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/as/applications"
-            element={
-              <ProtectedRoute page="applications">
-                <ApplicationsTablePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/citizens"
-            element={
-              <ProtectedRoute page="citizens">
-                <CitizensDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <SettingsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <TooltipProvider delayDuration={300}>
+          <Toaster />
+          <SessionExpiredModal />
+          <NameRequiredModal />
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/as/search"
+              element={
+                <ProtectedRoute page="search">
+                  <Search />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/as/applications"
+              element={
+                <ProtectedRoute page="applications">
+                  <ApplicationsTablePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/citizens"
+              element={
+                <ProtectedRoute page="citizens">
+                  <CitizensDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/:tab?"
+              element={
+                <ProtectedRoute>
+                  <AdminPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-writer"
+              element={
+                <ProtectedRoute page="ai_writer">
+                  <AIApplicationWriter />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-writer/list"
+              element={
+                <ProtectedRoute page="ai_writer">
+                  <AIApplicationsListPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-writer/:slug"
+              element={
+                <ProtectedRoute page="ai_writer">
+                  <AIApplicationWriter />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
       </AuthProvider>
     </BrowserRouter>
   )
