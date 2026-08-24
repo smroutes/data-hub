@@ -5,6 +5,7 @@ import {
   FolderOpen,
   Lightbulb,
   Loader2,
+  Pencil,
   Printer,
   Save,
   Sparkles,
@@ -13,6 +14,7 @@ import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import { ApplicationEditor } from "@/components/editor/ApplicationEditor"
@@ -48,6 +50,8 @@ const MAX_PROMPT_LENGTH = 2000
 // automatically in the right language since it's the model's own text,
 // not a translation we'd have to get right ourselves.
 const MAX_HEADER_TITLE_LENGTH = 60
+
+const DEFAULT_RESULT_TITLE = "AI Generated Application"
 
 function extractTitleFromApplication(markdown: string): string | null {
   const match = /^\**(?:বিষয়|subject|विषय)\**\s*[:ঃ]\s*(.+)$/im.exec(markdown)
@@ -117,6 +121,13 @@ export function AIApplicationWriter() {
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState("")
   const [resultTitle, setResultTitle] = useState<string | null>(null)
+  // User edits are local-only for now (no save endpoint yet -- that needs
+  // the DB redesign this is deferring to), so this just overrides the
+  // display; it isn't persisted anywhere and resets whenever a fresh
+  // title is extracted from a new generation.
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState("")
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const [suggestion, setSuggestion] = useState("")
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Plate's `value` is only read once at construction -- bumping this key
@@ -165,6 +176,7 @@ export function AIApplicationWriter() {
     setGenerating(true)
     setResult("")
     setResultTitle(null)
+    setIsEditingTitle(false)
     try {
       const text = await generateApplication(prompt.trim(), language, category || null)
       setResult(text)
@@ -188,6 +200,7 @@ export function AIApplicationWriter() {
     setCategory("")
     setResult("")
     setResultTitle(null)
+    setIsEditingTitle(false)
     // Plate only reads its initial value once at construction, so clearing
     // `result` alone doesn't touch the already-mounted editor -- the old
     // application stayed visible in the canvas even though the title/state
@@ -204,6 +217,17 @@ export function AIApplicationWriter() {
     if (!(editorRef.current?.getMarkdown() ?? result).trim()) return
     const html = (await editorRef.current?.getPrintHtml()) ?? ""
     printEditorContent(html, "Application")
+  }
+
+  function startEditingTitle() {
+    setTitleDraft(resultTitle ?? DEFAULT_RESULT_TITLE)
+    setIsEditingTitle(true)
+  }
+
+  function commitTitleEdit() {
+    const trimmed = titleDraft.trim()
+    setResultTitle(trimmed || null)
+    setIsEditingTitle(false)
   }
 
   return (
@@ -361,9 +385,40 @@ export function AIApplicationWriter() {
                     row) -- `truncate` alone can't override either. */}
                 <CardTitle className="flex min-w-0 flex-1 items-center gap-2 text-base">
                   <Sparkles className="size-4 shrink-0 text-brand" />
-                  <span className="min-w-0 truncate" title={resultTitle ?? undefined}>
-                    {resultTitle ?? "AI Generated Application"}
-                  </span>
+                  {isEditingTitle ? (
+                    <Input
+                      ref={titleInputRef}
+                      autoFocus
+                      value={titleDraft}
+                      onChange={(e) => setTitleDraft(e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      onBlur={commitTitleEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          commitTitleEdit()
+                        } else if (e.key === "Escape") {
+                          e.preventDefault()
+                          setIsEditingTitle(false)
+                        }
+                      }}
+                      className="h-7 min-w-0 flex-1 text-base"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={startEditingTitle}
+                      disabled={generating}
+                      className="group flex min-w-0 flex-1 items-center gap-1.5 text-left disabled:cursor-default"
+                    >
+                      <span className="min-w-0 truncate" title={resultTitle ?? undefined}>
+                        {resultTitle ?? DEFAULT_RESULT_TITLE}
+                      </span>
+                      {!generating && (
+                        <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      )}
+                    </button>
+                  )}
                 </CardTitle>
                 <div className="flex shrink-0 gap-2">
                   <Button variant="outline" size="sm" onClick={handlePrint} disabled={generating}>
