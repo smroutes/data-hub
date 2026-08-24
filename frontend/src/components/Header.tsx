@@ -100,19 +100,21 @@ export function Header() {
               </NavigationMenuItem>
             )}
 
-            <NavigationMenuItem>
-              {/* flex-row: NavigationMenuLink's own base classes include
-                  flex-col (for its dropdown-content usage elsewhere), which
-                  otherwise leaks in here since asChild just concatenates
-                  both classNames rather than merging conflicting utilities,
-                  stacking the icon above the text instead of beside it. */}
-              <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
-                <Link to="/ai-writer" className="flex-row items-center gap-1.5">
-                  <Sparkles className="size-3.5" />
-                  AI Writer
-                </Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
+            {canVisit("ai_writer") && (
+              <NavigationMenuItem>
+                {/* flex-row: NavigationMenuLink's own base classes include
+                    flex-col (for its dropdown-content usage elsewhere), which
+                    otherwise leaks in here since asChild just concatenates
+                    both classNames rather than merging conflicting utilities,
+                    stacking the icon above the text instead of beside it. */}
+                <NavigationMenuLink asChild className={NAV_ITEM_CLASS}>
+                  <Link to="/ai-writer" className="flex-row items-center gap-1.5">
+                    <Sparkles className="size-3.5" />
+                    AI Writer
+                  </Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            )}
 
             {isAdmin && (
               <NavigationMenuItem>
@@ -186,12 +188,14 @@ export function Header() {
                   ))}
                 </>
               )}
-              <DropdownMenuItem asChild>
-                <Link to="/ai-writer" className="flex items-center gap-1.5">
-                  <Sparkles className="size-3.5" />
-                  AI Writer
-                </Link>
-              </DropdownMenuItem>
+              {canVisit("ai_writer") && (
+                <DropdownMenuItem asChild>
+                  <Link to="/ai-writer" className="flex items-center gap-1.5">
+                    <Sparkles className="size-3.5" />
+                    AI Writer
+                  </Link>
+                </DropdownMenuItem>
+              )}
               {isAdmin && (
                 <DropdownMenuItem asChild>
                   <Link to="/admin">Admin</Link>

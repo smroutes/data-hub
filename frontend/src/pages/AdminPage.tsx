@@ -20,11 +20,12 @@ import {
 } from "@/lib/rbacApi"
 import type { StaffMember, Page as RbacPage, AuditLogEntry } from "@/lib/rbacApi"
 
-const PAGES: RbacPage[] = ["search", "applications", "citizens"]
+const PAGES: RbacPage[] = ["search", "applications", "citizens", "ai_writer"]
 const PAGE_LABELS: Record<RbacPage, string> = {
   search: "Search",
   applications: "Applications",
   citizens: "Citizens",
+  ai_writer: "AI Writer",
 }
 const AUDIT_PAGE_SIZE = 25
 
@@ -36,6 +37,7 @@ function emptyPerm(): Record<RbacPage, PermEntry> {
     search: { read: false, write: false },
     applications: { read: false, write: false },
     citizens: { read: false, write: false },
+    ai_writer: { read: false, write: false },
   }
 }
 

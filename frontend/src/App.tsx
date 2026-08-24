@@ -94,7 +94,7 @@ function App() {
             <Route
               path="/ai-writer"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute page="ai_writer">
                   <AIApplicationWriter />
                 </ProtectedRoute>
               }
@@ -102,7 +102,7 @@ function App() {
             <Route
               path="/ai-writer/list"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute page="ai_writer">
                   <AIApplicationsListPage />
                 </ProtectedRoute>
               }
@@ -110,7 +110,7 @@ function App() {
             <Route
               path="/ai-writer/:slug"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute page="ai_writer">
                   <AIApplicationWriter />
                 </ProtectedRoute>
               }
