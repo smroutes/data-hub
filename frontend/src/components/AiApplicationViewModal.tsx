@@ -33,11 +33,11 @@ function formatDateTime(iso: string) {
   return `${formatDate(iso)} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, wrap }: { label: string; value: string; wrap?: boolean }) {
   return (
     <div>
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="text-sm text-foreground">{value}</div>
+      <div className={wrap ? "text-sm whitespace-pre-wrap text-foreground" : "text-sm text-foreground"}>{value}</div>
     </div>
   )
 }
@@ -143,7 +143,7 @@ export function AiApplicationViewModal({
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as "preview" | "details")} className="min-h-0 flex-1 gap-0">
-          <div className="shrink-0 border-t px-6">
+          <div className="shrink-0 px-6">
             <TabsList variant="line" className="h-10">
               <TabsTrigger
                 value="preview"
@@ -197,8 +197,9 @@ export function AiApplicationViewModal({
               <Field label="Status" value={status[0].toUpperCase() + status.slice(1)} />
               <Field label="Created At" value={formatDateTime(application.created_at)} />
               <Field label="Last Updated" value={formatDateTime(application.updated_at)} />
-              <Field label="Suggestion Tokens Used" value={String(application.suggest_tokens_used)} />
-              <Field label="Generation Tokens Used" value={String(application.generate_tokens_used)} />
+              <div className="col-span-2">
+                <Field label="Description" value={application.prompt || "—"} wrap />
+              </div>
             </div>
           </TabsContent>
         </Tabs>
