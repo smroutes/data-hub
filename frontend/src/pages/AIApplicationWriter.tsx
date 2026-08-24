@@ -126,6 +126,7 @@ export function AIApplicationWriter() {
   const [language, setLanguage] = useState<Language>("bn")
   const [category, setCategory] = useState("")
   const [generating, setGenerating] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [result, setResult] = useState("")
   const [resultTitle, setResultTitle] = useState<string | null>(null)
   // Title edits apply to local state immediately; persisted the same way
@@ -330,11 +331,12 @@ export function AIApplicationWriter() {
   }
 
   async function handleSave() {
-    if (!session || generating) return
+    if (!session || generating || saving) return
     const content = (editorRef.current?.getMarkdown() ?? result).trim()
     if (!content) return
     const title = resultTitle ?? DEFAULT_RESULT_TITLE
     const pendingSuggest = suggestTokensAccruedRef.current
+    setSaving(true)
     try {
       if (!docId) {
         const created = await createAiApplication(session, {
@@ -377,6 +379,8 @@ export function AIApplicationWriter() {
       toast.success("Saved.")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save.", { duration: Infinity })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -654,9 +658,13 @@ export function AIApplicationWriter() {
                     <Printer className="size-3.5" />
                     Print
                   </Button>
-                  <Button size="sm" onClick={handleSave} disabled={generating || !hasContent}>
-                    <Save className="size-3.5" />
-                    {docStatus === "saved" ? "Save" : "Save Application"}
+                  <Button size="sm" onClick={handleSave} disabled={generating || saving || !hasContent}>
+                    {saving ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Save className="size-3.5" />
+                    )}
+                    {saving ? "Saving..." : docStatus === "saved" ? "Save" : "Save Application"}
                   </Button>
                 </div>
               </div>
