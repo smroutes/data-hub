@@ -62,6 +62,43 @@ function extractTitleFromApplication(markdown: string): string | null {
     : title
 }
 
+const GENERATING_MESSAGE: Record<Language, { title: string; subtitle: string }> = {
+  bn: { title: "আপনার আবেদনটি তৈরি হচ্ছে...", subtitle: "এটি সাধারণত কয়েক সেকেন্ড সময় নেয়।" },
+  en: { title: "Generating your application...", subtitle: "This usually takes a few seconds." },
+  hi: { title: "आपका आवेदन तैयार किया जा रहा है...", subtitle: "इसमें आमतौर पर कुछ सेकंड लगते हैं।" },
+}
+
+const TYPEWRITER_SPEED_MS = 35
+
+// Reveals `text` one character at a time while `active` is true -- restarts
+// from scratch whenever `active` flips true->true again (a new generation
+// with the same message) or `text` changes (a different language), rather
+// than only reacting to `text` alone.
+function useTypewriter(text: string, active: boolean, speedMs = TYPEWRITER_SPEED_MS): string {
+  const [display, setDisplay] = useState("")
+
+  useEffect(() => {
+    if (!active) {
+      setDisplay("")
+      return
+    }
+    let i = 0
+    setDisplay("")
+    const interval = setInterval(() => {
+      i++
+      setDisplay(text.slice(0, i))
+      if (i >= text.length) clearInterval(interval)
+    }, speedMs)
+    return () => clearInterval(interval)
+    // `active` is intentionally part of the key that restarts this: toggling
+    // generating false->true again with the identical text/language should
+    // still retype from scratch, not silently skip because `text` didn't
+    // change.
+  }, [text, active, speedMs])
+
+  return display
+}
+
 const CATEGORIES = [
   "Identity Documents",
   "Financial Assistance",
@@ -87,6 +124,7 @@ export function AIApplicationWriter() {
   // generation, rather than trying to sync an uncontrolled editor.
   const [resultVersion, setResultVersion] = useState(0)
   const editorRef = useRef<ApplicationEditorHandle>(null)
+  const typedGeneratingTitle = useTypewriter(GENERATING_MESSAGE[language].title, generating)
 
   // Debounced ghost-text autocomplete (Groq) -- clears immediately on any
   // edit so a stale suggestion never lingers against changed text, then
@@ -150,6 +188,13 @@ export function AIApplicationWriter() {
     setCategory("")
     setResult("")
     setResultTitle(null)
+    // Plate only reads its initial value once at construction, so clearing
+    // `result` alone doesn't touch the already-mounted editor -- the old
+    // application stayed visible in the canvas even though the title/state
+    // around it had reset. Bumping this remounts ApplicationEditor with a
+    // genuinely empty initialMarkdown, the same mechanism handleGenerate
+    // already uses to load in new content.
+    setResultVersion((v) => v + 1)
   }
 
   async function handlePrint() {
@@ -322,13 +367,25 @@ export function AIApplicationWriter() {
             </CardHeader>
             <CardContent className="relative p-0">
               {generating && (
-                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-b-xl bg-white/85 backdrop-blur-sm">
+                // z-10, not z-20 -- the site header (Header.tsx) is also
+                // z-20, and this overlay's tall absolute box scrolls up
+                // along with the rest of the card's normal-flow content.
+                // Once scrolled far enough that it occupies the same
+                // on-screen region as the sticky header, equal z-index
+                // falls back to DOM order, and this (rendered later, deeper
+                // in <main>) was winning and painting its translucent blur
+                // straight over the nav bar. Keeping it below the header's
+                // z-20 fixes that regardless of scroll position.
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-b-xl bg-white/85 backdrop-blur-sm">
                   <span className="relative flex size-12 items-center justify-center">
                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand/30" />
                     <Sparkles className="relative size-6 text-brand" />
                   </span>
-                  <p className="text-sm font-medium text-foreground">Generating your application...</p>
-                  <p className="text-xs text-muted-foreground">This usually takes a few seconds.</p>
+                  <p className="min-h-5 text-sm font-medium text-foreground">
+                    {typedGeneratingTitle}
+                    <span className="animate-pulse">{typedGeneratingTitle.length < GENERATING_MESSAGE[language].title.length ? "|" : ""}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{GENERATING_MESSAGE[language].subtitle}</p>
                 </div>
               )}
               {/* Always mounted -- even with nothing generated yet, someone
