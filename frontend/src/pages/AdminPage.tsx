@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
 import { ChevronLeft, ChevronRight, Loader2, ShieldAlert } from "lucide-react"
 import { Header } from "@/components/Header"
@@ -47,10 +48,34 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString()
 }
 
+type AdminTab = "users" | "activity" | "usage" | "presence"
+
+// "presence" reads as "online-now" in the URL -- more meaningful to
+// anyone glancing at the address bar or bookmarking it than the internal
+// state name.
+const TAB_SLUGS: Record<AdminTab, string> = {
+  users: "",
+  activity: "activity",
+  usage: "usage",
+  presence: "online-now",
+}
+const SLUG_TABS: Record<string, AdminTab> = {
+  activity: "activity",
+  usage: "usage",
+  "online-now": "presence",
+}
+
 export function AdminPage() {
   useDocumentTitle("Admin")
   const { session, isAdmin, accessLoading } = useAuth()
-  const [tab, setTab] = useState<"users" | "activity" | "usage" | "presence">("users")
+  const navigate = useNavigate()
+  const { tab: tabSlug } = useParams<{ tab?: string }>()
+  // Falls back to "users" for both the bare /admin route and any
+  // unrecognized slug, rather than rendering a blank tab.
+  const tab: AdminTab = (tabSlug && SLUG_TABS[tabSlug]) || "users"
+  function setTab(next: AdminTab) {
+    navigate(TAB_SLUGS[next] ? `/admin/${TAB_SLUGS[next]}` : "/admin")
+  }
   const [error, setError] = useState("")
 
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -178,7 +203,7 @@ export function AdminPage() {
             <CardDescription>Manage staff access and review activity.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "users" | "activity" | "usage" | "presence")}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as AdminTab)}>
               <TabsList className="mb-4">
                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
                 <TabsTrigger value="activity">Activity</TabsTrigger>
