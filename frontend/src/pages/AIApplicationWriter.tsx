@@ -439,7 +439,7 @@ export function AIApplicationWriter() {
             <p className="text-sm text-muted-foreground">
               {loadError === "not_found"
                 ? "It may have been removed, or the link is incorrect."
-                : "Something went wrong loading it -- try again in a moment."}
+                : "Something went wrong loading it. Try again in a moment."}
             </p>
             <Button variant="outline" className="mt-2" asChild>
               <Link to="/ai-writer/list">

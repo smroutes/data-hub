@@ -289,6 +289,12 @@ export function AIApplicationsListPage() {
             <p className="text-muted-foreground">View, search, and manage all your AI generated applications.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild>
+              <Link to="/ai-writer">
+                <Sparkles className="size-4" />
+                New Application
+              </Link>
+            </Button>
             <div className="relative w-64">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -364,9 +370,8 @@ export function AIApplicationsListPage() {
           </div>
         )}
 
-        <Card>
-          <CardContent className="pt-6">
-            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        <div>
+          {error && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
             {loading ? (
               <div className="flex justify-center py-10">
@@ -381,7 +386,7 @@ export function AIApplicationsListPage() {
                     emptyMessage={
                       query || status
                         ? "No matching applications."
-                        : "No saved applications yet -- generate one from the AI Writer."
+                        : "No saved applications yet. Generate one from the AI Writer."
                     }
                   />
 
@@ -440,8 +445,7 @@ export function AIApplicationsListPage() {
                 </>
               )
             )}
-          </CardContent>
-        </Card>
+        </div>
       </main>
       <Footer />
     </div>
