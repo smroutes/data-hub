@@ -166,7 +166,27 @@ export function AIApplicationWriter() {
   const [loadError, setLoadError] = useState<"not_found" | "error" | null>(null)
 
   useEffect(() => {
-    if (!slug || !session) return
+    if (!slug) {
+      // Navigated back to the bare /ai-writer (e.g. via the nav-menu link)
+      // while a document was already loaded -- without this, the route
+      // changes but the previously loaded doc's state (and the mounted
+      // editor content) just stays put, since nothing else clears it.
+      setDocId(null)
+      setDocVersion(null)
+      setDocStatus(null)
+      setDocTokens({ suggest: 0, generate: 0 })
+      suggestTokensAccruedRef.current = 0
+      setPrompt("")
+      setCategory("")
+      setResult("")
+      setResultTitle(null)
+      setIsEditingTitle(false)
+      setHasContent(false)
+      setLoadError(null)
+      setResultVersion((v) => v + 1)
+      return
+    }
+    if (!session) return
     setLoadingDoc(true)
     setLoadError(null)
     getAiApplicationBySlug(session, slug)

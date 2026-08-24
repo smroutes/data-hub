@@ -143,7 +143,7 @@ export function AiApplicationViewModal({
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as "preview" | "details")} className="min-h-0 flex-1 gap-0">
-          <div className="shrink-0 px-6">
+          <div className="shrink-0 border-b px-6">
             <TabsList variant="line" className="h-10">
               <TabsTrigger
                 value="preview"
@@ -175,7 +175,7 @@ export function AiApplicationViewModal({
                 <Loader2 className="size-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="rounded-md border bg-white p-6 text-neutral-900">
+              <div className="bg-white text-neutral-900">
                 {/* Keyed by version -- Plate only reads its initial value
                     once at construction (same constraint
                     ApplicationEditor.tsx's resultVersion remount works
