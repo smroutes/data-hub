@@ -405,19 +405,21 @@ export function AIApplicationWriter() {
                       className="h-7 min-w-0 flex-1 text-base"
                     />
                   ) : (
-                    <button
-                      type="button"
-                      onClick={startEditingTitle}
-                      disabled={generating}
-                      className="group flex min-w-0 flex-1 items-center gap-1.5 text-left disabled:cursor-default"
-                    >
-                      <span className="min-w-0 truncate" title={resultTitle ?? undefined}>
+                    <>
+                      <span className="min-w-0 flex-1 truncate" title={resultTitle ?? undefined}>
                         {resultTitle ?? DEFAULT_RESULT_TITLE}
                       </span>
-                      {!generating && (
-                        <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                      )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={startEditingTitle}
+                        disabled={generating}
+                        aria-label="Edit title"
+                        title="Edit title"
+                        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                    </>
                   )}
                 </CardTitle>
                 <div className="flex shrink-0 gap-2">
