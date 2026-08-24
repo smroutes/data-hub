@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
+import { toast } from "sonner"
 import { Download, Loader2, Pencil, Printer, X } from "lucide-react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -13,6 +14,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { listAiApplicationVersions } from "@/lib/aiApplicationsApi"
 import type { AiApplication, AiApplicationVersion } from "@/lib/aiApplicationsApi"
 import { printEditorContent } from "@/lib/editorPrint"
+import { downloadPdf } from "@/lib/pdfDownload"
 
 const LANGUAGE_LABELS: Record<AiApplication["language"], string> = {
   bn: "বাংলা",
@@ -60,6 +62,7 @@ export function AiApplicationViewModal({
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<"preview" | "details">("preview")
+  const [downloading, setDownloading] = useState(false)
   const viewRef = useRef<ApplicationReadOnlyViewHandle>(null)
 
   useEffect(() => {
@@ -84,18 +87,16 @@ export function AiApplicationViewModal({
     printEditorContent(html, application!.title)
   }
 
-  // There's no PDF library in this project (embedding one just for this
-  // button, with correct Bengali/Devanagari shaping, is a lot of weight
-  // for one feature) -- instead this reuses the same print pipeline as
-  // Print itself (fonts, page styling, and all), which is exactly what
-  // printHtml.ts's title-swap trick already exists for: Chrome's print
-  // dialog offers "Save as PDF" as a destination, and names the resulting
-  // file after document.title at the moment print() fires. So "Download"
-  // opens that dialog pre-rendered with the same content Print shows,
-  // rather than saving a raw .html file straight to disk.
   async function handleDownload() {
     const html = (await viewRef.current?.getPrintHtml()) ?? ""
-    printEditorContent(html, application!.title)
+    setDownloading(true)
+    try {
+      await downloadPdf(html, application!.title)
+    } catch {
+      toast.error("Couldn't generate the PDF. Please try again.")
+    } finally {
+      setDownloading(false)
+    }
   }
 
   return (
@@ -210,8 +211,8 @@ export function AiApplicationViewModal({
             Print
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleDownload}>
-              <Download className="size-4" />
+            <Button variant="outline" onClick={handleDownload} disabled={downloading}>
+              {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
               Download
             </Button>
             <Button asChild>

@@ -28,9 +28,11 @@ function escapeHtml(text: string): string {
 // Wraps the editor's static, non-interactive HTML render (bodyHtml -- see
 // ApplicationEditor's getPrintHtml(), built via Plate's serializeHtml
 // rather than scraped from the live contentEditable DOM) with print-page
-// styling so headings/bold/lists/tables etc. come out looking right, then
-// hands off to the same hidden-iframe print mechanism the Applications
-// page uses.
+// styling so headings/bold/lists/tables etc. come out looking right.
+// Shared by printEditorContent (feeds this into the browser's print
+// dialog) and pdfDownload.ts (rasterizes this same markup into an actual
+// .pdf file client-side) so both surfaces stay pixel-identical instead of
+// maintaining the font-embedding/spacing rules twice.
 //
 // serializeHtml's paragraph/hr components render as a plain <div>, not
 // <p> -- Plate's own SlateElement defaults to <div> unless a component
@@ -39,8 +41,8 @@ function escapeHtml(text: string): string {
 // root (class "slate-editor"), so spacing rules below target ITS direct
 // children (one per top-level block) rather than assuming tag names that
 // aren't actually there or adding a second, redundant wrapper.
-export function printEditorContent(bodyHtml: string, title: string): void {
-  const html = `<!doctype html>
+export function buildPrintDocument(bodyHtml: string, title: string): string {
+  return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -95,5 +97,10 @@ export function printEditorContent(bodyHtml: string, title: string): void {
 </head>
 <body>${bodyHtml}</body>
 </html>`
-  printHtml(html, title)
+}
+
+// Hands the built document off to the same hidden-iframe print mechanism
+// the Applications page uses.
+export function printEditorContent(bodyHtml: string, title: string): void {
+  printHtml(buildPrintDocument(bodyHtml, title), title)
 }
