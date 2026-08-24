@@ -17,6 +17,7 @@ import { ApplicationsTablePage } from "@/pages/ApplicationsTablePage"
 import { AdminPage } from "@/pages/AdminPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { AIApplicationWriter } from "@/pages/AIApplicationWriter"
+import { AIApplicationsListPage } from "@/pages/AIApplicationsListPage"
 import { NotFound } from "@/pages/NotFound"
 
 function Search() {
@@ -92,6 +93,22 @@ function App() {
             />
             <Route
               path="/ai-writer"
+              element={
+                <ProtectedRoute>
+                  <AIApplicationWriter />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-writer/list"
+              element={
+                <ProtectedRoute>
+                  <AIApplicationsListPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-writer/:slug"
               element={
                 <ProtectedRoute>
                   <AIApplicationWriter />
