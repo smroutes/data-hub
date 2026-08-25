@@ -121,8 +121,21 @@ CREATE TRIGGER staff_presence_set_last_seen
 
 ALTER TABLE public.staff_presence ENABLE ROW LEVEL SECURITY;
 
+-- Admin, or one's own row -- not just admin. Postgres also consults a
+-- table's SELECT policy (not the UPDATE policy) to determine whether a
+-- conflicting row already exists for an `INSERT ... ON CONFLICT DO
+-- UPDATE`, which is exactly what sendHeartbeat's upsert issues on every
+-- heartbeat (usageApi.ts, ?on_conflict=staff_id,device_id) -- an
+-- admin-only USING clause here would silently break every non-admin's
+-- heartbeat (reproduced directly: fails only with ON CONFLICT DO UPDATE
+-- present, even on that user's very first-ever heartbeat with no real
+-- conflicting row). Harmless to allow: a non-admin can only ever see
+-- their own row this way, never anyone else's.
 CREATE POLICY staff_presence_select ON public.staff_presence FOR SELECT TO authenticated
-  USING ((SELECT public.is_admin()) AND (SELECT public.aal_satisfied()));
+  USING (
+    ((SELECT public.is_admin()) OR staff_id = (SELECT public.current_staff_id()))
+    AND (SELECT public.aal_satisfied())
+  );
 
 CREATE POLICY staff_presence_upsert ON public.staff_presence FOR INSERT TO authenticated
   WITH CHECK (staff_id = (SELECT public.current_staff_id()) AND (SELECT public.aal_satisfied()));
