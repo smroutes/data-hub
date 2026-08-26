@@ -16,7 +16,7 @@
 #
 #   manage-users.sh make-admin   <username>   # RBAC: full access, bypasses permissions
 #   manage-users.sh revoke-admin <username>
-#   manage-users.sh grant <username> <search|applications|citizens> <read|write|readwrite|none>
+#   manage-users.sh grant <username> <search|applications|citizens|ai_writer|applications_export> <read|write|readwrite|none>
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
@@ -141,15 +141,15 @@ for u in users:
   grant)
     page="${3:-}"
     level="${4:-}"
-    case "$page" in search|applications|citizens) ;; *)
-      echo "usage: manage-users.sh grant <username> <search|applications|citizens> <read|write|readwrite|none>" >&2; exit 1 ;;
+    case "$page" in search|applications|citizens|ai_writer|applications_export) ;; *)
+      echo "usage: manage-users.sh grant <username> <search|applications|citizens|ai_writer|applications_export> <read|write|readwrite|none>" >&2; exit 1 ;;
     esac
     case "$level" in
       read)      can_read=true;  can_write=false ;;
       write)     can_read=false; can_write=true ;;
       readwrite) can_read=true;  can_write=true ;;
       none)      can_read=false; can_write=false ;;
-      *) echo "usage: manage-users.sh grant <username> <search|applications|citizens> <read|write|readwrite|none>" >&2; exit 1 ;;
+      *) echo "usage: manage-users.sh grant <username> <search|applications|citizens|ai_writer|applications_export> <read|write|readwrite|none>" >&2; exit 1 ;;
     esac
     [ -n "$username" ] || { echo "usage: manage-users.sh grant <username> <page> <level>" >&2; exit 1; }
     psql_exec "

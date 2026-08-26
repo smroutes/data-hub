@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronLeft, ChevronRight, FilterX, Loader2, RefreshCw, Search } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, Download, FilterX, Loader2, RefreshCw, Search } from "lucide-react"
+import { toast } from "sonner"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Button } from "@/components/ui/button"
@@ -8,11 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { DataTable } from "@/components/ui/data-table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { SubmissionFlagBadge } from "@/components/SubmissionFlagBadge"
 import { ApplicationDetailsModal } from "@/components/ApplicationDetailsModal"
 import { useAuth } from "@/lib/AuthContext"
 import { effectiveSubmissionDate, listFlaggedApplications } from "@/lib/applicationsApi"
 import type { Application } from "@/lib/applicationsApi"
+import { exportApplicationsCsv, exportApplicationsXlsx } from "@/lib/applicationsExport"
 import { useDocumentTitle } from "@/lib/useDocumentTitle"
 
 const PAGE_SIZE = 20
@@ -41,7 +44,8 @@ function sortableHeader(label: string) {
 
 export function ApplicationsTablePage() {
   useDocumentTitle("Applications")
-  const { session } = useAuth()
+  const { session, can } = useAuth()
+  const canExport = can("applications_export", "read")
   const [applications, setApplications] = useState<Application[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -51,6 +55,7 @@ export function ApplicationsTablePage() {
   const [date, setDate] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [exporting, setExporting] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsTarget, setDetailsTarget] = useState<Application | null>(null)
 
@@ -98,6 +103,23 @@ export function ApplicationsTablePage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load."))
       .finally(() => setLoading(false))
+  }
+
+  // Exports whatever the current filters/search resolve to -- not just
+  // the one page held in `applications` state -- via its own full-set
+  // fetch (applicationsExport.ts pages through in large batches).
+  async function handleExport(format: "csv" | "xlsx") {
+    if (!session || exporting) return
+    setExporting(true)
+    try {
+      const filters = { query, flag: flag || undefined, date: date || undefined }
+      if (format === "csv") await exportApplicationsCsv(session, filters)
+      else await exportApplicationsXlsx(session, filters)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed.", { duration: Infinity })
+    } finally {
+      setExporting(false)
+    }
   }
 
   useEffect(refresh, [session, page, query, flag, date])
@@ -214,6 +236,30 @@ export function ApplicationsTablePage() {
                 <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
                 Reload
               </Button>
+              {/* Behind its own 'applications_export' permission, separate
+                  from just being able to view this page -- exporting a
+                  bulk file of name/mobile/Aadhaar/address is a bigger
+                  privacy exposure than viewing one row at a time. */}
+              {canExport && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" disabled={exporting} title="Download the current results">
+                      {exporting ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Download className="size-3.5" />
+                      )}
+                      Download
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => handleExport("csv")}>Download as CSV</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleExport("xlsx")}>
+                      Download as Excel (.xlsx)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
 
             {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
