@@ -13,7 +13,7 @@ gateway (Caddy, TLS + CORS)  --/auth/*-->  GoTrue   \
                              --/rest/*--> PostgREST  }--> PostgreSQL
                                                           /
 
-nightly pg_dump → gzip → Cloudflare R2 (host cron, see scripts/backup.sh)
+pg_dump → gzip → Cloudflare R2, daily or every 15min (host cron, see "Backups" below)
 ```
 
 The login UI itself lives in `../frontend` (the existing DataHub app) --
@@ -262,6 +262,45 @@ changing it: `docker compose up -d gateway`.
 **"survives `docker compose down && up -d`?"** -- yes, `pgdata` is a named
 Docker volume, unaffected by `down`/`up`. Only `docker compose down -v` (or
 manually removing the volume) deletes data.
+
+## Backups
+
+`scripts/backup.sh` runs from host cron on the production droplet (not
+inside a container) -- `pg_dump` piped through `gzip`, uploaded to
+Cloudflare R2, with verification at each step (dump size, gzip integrity,
+uploaded size matches local size). Filenames always include the time
+(`postgresql/daily/<date>/database-<HHMMSS>.sql.gz`), so it's always safe
+to run more than once a day -- one run never overwrites another's file
+that same day. `BACKUP_PRUNE_ENABLED` in `.env` is `false` by default;
+nothing is ever auto-deleted from R2 unless that's explicitly set to
+`true`.
+
+Cadence is just a crontab line -- the script itself doesn't care how
+often it's invoked:
+
+```bash
+ssh root@api.wb275.in
+crontab -e
+```
+
+- **Normal operation -- once daily**, at 2:00 AM IST (20:30 UTC, since the
+  droplet's system clock is UTC while the app's own `TZ` is Asia/Kolkata):
+  ```
+  30 20 * * * cd /root/data-hub/db && ./scripts/backup.sh >> /var/log/db-backup.log 2>&1
+  ```
+- **During a citizen camp (or any day with a lot of write activity worth
+  a tighter recovery window) -- every 15 minutes:**
+  ```
+  */15 * * * * cd /root/data-hub/db && ./scripts/backup.sh >> /var/log/db-backup.log 2>&1
+  ```
+  Switch back to the daily line once the camp is over -- there's no reason
+  to keep the 15-minute cadence running day-to-day, it just produces ~96
+  files a day instead of 1 for no ongoing benefit.
+
+Verify a schedule change actually took effect with `crontab -l`, and
+check `/var/log/db-backup.log` (or list `postgresql/daily/<today>/` in R2
+directly) to confirm runs are actually landing before trusting a new
+cadence.
 
 ## Restoring on a brand-new droplet
 
